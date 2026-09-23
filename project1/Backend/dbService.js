@@ -44,10 +44,17 @@ connection.connect((err) => {
 
 // the following are database functions, 
 
-class DbService{
-    static getDbServiceInstance(){ // only one instance is sufficient
-        return instance? instance: new DbService();
+class DbService
+{
+    static getDbServiceInstance() {
+        if (!instance) { instance = new DbService(); }
+        return instance;
     }
+
+    // only one instance is sufficient
+    // static getDbServiceInstance(){ return instance? instance: new DbService(); }
+
+    // #region
 
    /*
      This code defines an asynchronous function getAllData using the async/await syntax. 
@@ -92,7 +99,7 @@ class DbService{
            // use await to call an asynchronous function
            const response = await new Promise((resolve, reject) => 
               {
-                  const query = "SELECT * FROM names;";
+                  const query = `SELECT * FROM names;`;
                   connection.query(query, 
                        (err, results) => {
                              if(err) reject(new Error(err.message));
@@ -206,6 +213,318 @@ class DbService{
          console.log(error);
       }
   }
+  // #endregion NAME TABLE FUNCS
+
+    // #region NEW Users TABLE FUNCS
+    static USERS_TABLE_NAME = "Users";
+    static USERS_TABLE_COLUMNS = Object.freeze({ 
+        username: "username", password: "password",
+        firstname: "firstname", lastname: "lastname",
+        salary: "salary", age: "age",
+        registerday: "registerday", signintime: "signintime"
+    });
+    static ALLOWED_USERS_COLUMNS_SET = new Set(Object.values(DbService.USERS_TABLE_COLUMNS));
+    static ALLOWED_USERS_UPDATE_SET = (() => {
+        const updateSet = new Set(DbService.ALLOWED_USERS_COLUMNS_SET);
+        updateSet.delete(DbService.USERS_TABLE_COLUMNS.registerday);
+        updateSet.delete(DbService.USERS_TABLE_COLUMNS.signintime);
+        return updateSet;
+    })();
+
+    // #region helper update funcs
+    /** Helper to transform/format data before writing to DB */
+    #transformersUsersMap = new Map([
+        [DbService.USERS_TABLE_COLUMNS.username, this.#transformUsername.bind(this)],
+        [DbService.USERS_TABLE_COLUMNS.password, this.#transformPassword.bind(this)],
+        [DbService.USERS_TABLE_COLUMNS.firstname, this.#transformFirstname.bind(this)],
+        [DbService.USERS_TABLE_COLUMNS.lastname, this.#transformLastname.bind(this)],
+        [DbService.USERS_TABLE_COLUMNS.salary, this.#transformSalary.bind(this)],
+        [DbService.USERS_TABLE_COLUMNS.age, this.#transformAge.bind(this)]
+    ]);
+
+    #transformToValidInput(val) {
+        if (typeof val !== 'string') return val;
+
+        // Matches specified dangerous/unwanted punctuation: ' " ? ! = ` \ ; < >
+        // Replaces matches with an empty string ''; double protection (as SQL query parameters handle this already)
+        const sanitized = val.replace(/['"?!=`\\;<>]/g, '');
+
+        return sanitized;
+    }
+    
+    #transformUsername(val) {
+        val = this.#transformToValidInput(val);
+        if (typeof val !== 'string') return undefined;
+        const trimmed = val.trim();
+        return trimmed.length >= 2 ? trimmed : undefined;
+    }
+
+    #transformPassword(val) {
+        val = this.#transformToValidInput(val);
+        if (typeof val !== 'string') return undefined;
+
+        const trimmed = val.trim();
+        return trimmed.length >= 8 ? trimmed : undefined;
+    }
+
+    #transformFirstname(val) {
+        val = this.#transformToValidInput(val);
+        return typeof val === 'string' ? val.trim().substring(0, 256) : undefined;
+    }
+
+    #transformLastname(val) {
+        val = this.#transformToValidInput(val);
+        return typeof val === 'string' ? val.trim().substring(0, 256) : undefined;
+    }
+
+    #transformSalary(val) {
+        val = this.#transformToValidInput(val);
+        const parsed = parseFloat(val);
+        return (!isNaN(parsed) && parsed >= 0) ? parsed: undefined;
+    }
+
+    #transformAge(val) {
+        val = this.#transformToValidInput(val);
+        const parsed = parseInt(val, 10);
+        return (!isNaN(parsed) && parsed >= 0 && parsed <= 120) ? parsed: undefined;
+    }
+    // #endregion helper update funcs
+
+    async updateDetailsByID(data = {}, id) 
+    {
+        try {
+            const USR_TN = DbService.USERS_TABLE_NAME;
+            const setClauses = []; const queryParams = [];
+
+            // For every key value pair given
+            for (const [key, value] of Object.entries(data)) 
+            {
+                // Fast O(1) check against the allowable updatable Set
+                if (ALLOWED_UPDATE_SET.has(key)) 
+                {                    
+                    // Get precise field transformer or fall back to raw value
+                    const transform = this.#transformersUsersMap.get(key);
+                    const processedValue = transform ? transform(value): value;
+
+                    // Only append valid, successfully parsed attributes
+                    if (processedValue !== undefined) { setClauses.push(`${key} = ?`); queryParams.push(processedValue); }
+                }
+            }
+
+            // If no fields passed validation, abort query execution
+            if (setClauses.length === 0) return false;
+
+            queryParams.push(id); // The very last ? refers to the username ID
+            const query = `UPDATE ${USR_TN} SET ${setClauses.join(', ')} WHERE id = ?;`;
+
+            return await new Promise((resolve, reject) => {
+                connection.query(query, queryParams, (err, result) => {
+                    if (err) reject(new Error(err.message));
+                    else resolve(result.affectedRows);
+                });
+            });
+
+        } catch (error) {
+            console.log(error);
+            return false;
+        }
+    }
+
+    async searchByUsersName(name, exactSearch = false) 
+    {
+        try {
+            const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
+            const trimmedName = name.trim();
+
+            return await new Promise((resolve, reject) => {
+                let query = ''; let queryParams = [];
+
+                if (exactSearch === false) // Fuzzy search across full name: first name or last name
+                {                    
+                    query = `SELECT * FROM ${USR_TN} WHERE CONCAT(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) LIKE ?;`;
+                    queryParams = [`%${trimmedName}%`];
+                } 
+                else // Exact match: check full concatenated name OR individual first/last name columns
+                {                    
+                    query = `SELECT * FROM ${USR_TN} WHERE CONCAT(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) = ? OR ${USR_TC.firstname} = ? OR ${USR_TC.lastname} = ?;`;
+                    queryParams = [trimmedName, trimmedName, trimmedName];
+                }
+
+                connection.query(query, queryParams, (err, results) => {
+                    if (err) reject(new Error(err.message));
+                    else resolve(results);
+                });
+            });
+        } 
+        catch (error) { console.log(error); }
+    }
+
+    async searchByUsersID(usernameId)
+    {
+        try 
+        {
+            const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
+
+            return await new Promise((resolve, reject) => {
+                const query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.username} = ?;` 
+                connection.query(query, [usernameId], (err, results) => {
+                    if (err) reject(new Error(err.message));
+                    else resolve(results);
+                });
+            });
+        }
+        catch (error) { console.log(error); }
+    }
+
+    async searchBetweenUsersSalary(salary1, salary2)
+    {       
+        try 
+        {
+            const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
+            let min, max; salary1 = parseFloat(salary1); salary2 = parseFloat(salary2)        
+            if (salary1 === salary2) { min = salary1; max = min; }
+            else if (salary1 > salary2) { min = salary1; max = salary2; }
+            else { min = salary2; max = salary1; }
+
+            return await new Promise((resolve, reject) => {
+                let query = ''; queryParams = [];
+                if (min = max) 
+                { 
+                    query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.salary} = ?;`; 
+                    queryParams = [min];
+                } 
+                else 
+                { 
+                    query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.salary} >= ? AND ${USR_TC.salary} <= ?;`;
+                    queryParams = [min, max];
+                }
+                connection.query(query, queryParams, (err, results) => {
+                    if (err) reject(new Error(err.message));
+                    else resolve(results);
+                });
+            });
+        }
+        catch (error) { console.log(error); }
+    }
+
+    async searchBetweenUsersAges(age1, age2)
+    {       
+        try 
+        {
+            const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
+            let min, max; age1 = parseInt(age1); age2 = parseInt(age2)        
+            if (age1 === age2) { min = age1; max = min; }
+            else if (age1 > age2) { min = age1; max = age2; }
+            else { min = age2; max = age1; }
+
+            return await new Promise((resolve, reject) => {
+                let query = ''; queryParams = [];
+                if (min = max) 
+                { 
+                    query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.age} == ?;`; 
+                    queryParams = [min];
+                } 
+                else 
+                { 
+                    query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.age} >= ? AND ${USR_TC.age} <= ?;`;
+                    queryParams = [min, max];
+                }
+                connection.query(query, queryParams, (err, results) => {
+                    if (err) reject(new Error(err.message));
+                    else resolve(results);
+                });
+            });
+        }
+        catch (error) { console.log(error); }
+    }
+
+    async searchUsersRegistrationAfterUserID(usernameId, searchSameDay = false)
+    {
+        try 
+        {
+            const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
+
+            return await new Promise((resolve, reject) => {
+                let query = ``; let queryParams = [usernameId];
+                if (searchSameDay === false)
+                {
+                    query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.registerday} AND ${USR_TC.username} != ? >= 
+                                (SELECT ${USR_TC.registerday} FROM ${USR_TN} WHERE ${USR_TC.username} = ?) ORDER BY ${USR_TC.registerday} ASC;`
+                    queryParams.push(usernameId);
+                }
+                else
+                {
+                    query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.registerday} = 
+                                (SELECT ${USR_TC.registerday} FROM ${USR_TN} WHERE ${USR_TC.username} = ?) ORDER BY ${USR_TC.registerday} ASC;`
+                }
+
+                connection.query(query, queryParams, (err, results) => {
+                    if (err) reject(new Error(err.message));
+                    else resolve(results);
+                });
+            });
+        }
+        catch (error) { console.log(error); }
+    }
+
+    async searchUsersRegistrationSameAsUserID(usernameId)
+    {
+        try 
+        {
+            const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
+
+            return await new Promise((resolve, reject) => {
+                const query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.registerday} AND ${USR_TC.username} != ? >= 
+                                (SELECT ${USR_TC.registerday} FROM ${USR_TN} WHERE ${USR_TC.username} = ?) ORDER BY ${USR_TC.registerday} ASC;` 
+                connection.query(query, [usernameId, usernameId], (err, results) => {
+                    if (err) reject(new Error(err.message));
+                    else resolve(results);
+                });
+            });
+        }
+        catch (error) { console.log(error); }
+    }
+
+    async searchNeverSignedInUsers()
+    {
+        try 
+        {
+            const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
+
+            return await new Promise((resolve, reject) => {
+                const query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.signintime} = NULL OR ${USR_TC.signintime} ;` 
+                connection.query(query, [], (err, results) => {
+                    if (err) reject(new Error(err.message));
+                    else resolve(results);
+                });
+            });
+        }
+        catch (error) { console.log(error); }
+    }
+
+    async searchUsersSignedInToday() 
+    {
+        try {
+            const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
+            const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(startOfDay); endOfDay.setHours(23, 59, 59, 999);
+            // Using JS here is better because we avoid using CAST. Alternatively, we can use CURDATE() with INTERVAL keyword to search in between as well without having to create new dates
+
+            return await new Promise((resolve, reject) => {
+                const query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.signintime} BETWEEN ? AND ?;`;
+
+                connection.query(query, [startOfDay, endOfDay], (err, results) => {
+                    if (err) reject(new Error(err.message));
+                    else resolve(results);
+                });
+            });
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
+
+  // #endregion
 }
 
 module.exports = DbService;

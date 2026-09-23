@@ -1,6 +1,5 @@
 // Backend: application services, accessible by URIs
 
-
 const express = require('express')
 const cors = require ('cors')
 const dotenv = require('dotenv')
@@ -10,11 +9,12 @@ const app = express();
 
 const dbService = require('./dbService');
 
-
 app.use(cors());
 app.use(express.json())
 app.use(express.urlencoded({extended: false}));
 
+
+// #region NAMES TABLE
 // create
 app.post('/insert', (request, response) => {
     console.log("app: insert a row.");
@@ -125,7 +125,7 @@ app.get('/testdb', (request, response) => {
     .then(data => response.json({data: data}))
     .catch(err => console.log(err));
 });
-
+// #endregion NAMES TABLE
 
 // set up the web server listener
 // if we use .env to configure
