@@ -1,5 +1,6 @@
 // database services, accessbile by DbService methods.
 
+const crypto = require('crypto');
 const mysql = require('mysql');
 const dotenv = require('dotenv');
 dotenv.config(); // read from .env file
@@ -43,6 +44,24 @@ connection.connect((err) => {
 });
 
 // the following are database functions, 
+
+function hashPasswordPBKDF2(password) 
+{
+    // Unique 16-byte salt, 64 bytes = 512 bits
+    const salt = crypto.randomBytes(16).toString('hex'); 
+    const iterations = 10000; const keylen = 64;
+    const derivedKey = crypto.pbkdf2Sync(password, salt, iterations, keylen, 'sha512');
+    
+    // Store salt + iterations + hash together to be in the DB
+    return `${salt}:${iterations}:${derivedKey.toString('hex')}`;
+}
+
+function verifyPasswordPBKDF2(password, storedCombinedHash) 
+{
+    const [salt, iterations, originalHash] = storedCombinedHash.split(':');    
+    const derivedKey = crypto.pbkdf2Sync(password, salt, parseInt(iterations, 10), 64, 'sha512');
+    return derivedKey.toString('hex') === originalHash; // Rehash to compare
+}
 
 class DbService
 {
@@ -259,12 +278,13 @@ class DbService
         return trimmed.length >= 2 ? trimmed : undefined;
     }
 
+    // Note here, we don't run the crypto funcs
     #transformPassword(val) {
         val = this.#transformToValidInput(val);
         if (typeof val !== 'string') return undefined;
 
         const trimmed = val.trim();
-        return trimmed.length >= 8 ? trimmed : undefined;
+        return trimmed.length >= 8 ? trimmed: undefined;
     }
 
     #transformFirstname(val) {
@@ -320,20 +340,23 @@ class DbService
             if (!transformedUsername || !transformedPassword) { return false; }
 
             const success = await new Promise((resolve, reject) => {
-                const checkQuery = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.username} LIKE ? AND ${USR_TC.password} COLLATE utf8mb4_bin = ?`;
+                const pwQuery = `SELECT ${USR_TC.username}, ${USR_TC.password}, ${USR_TC.firstname}, ${USR_TC.lastname} FROM ${USR_TN} WHERE ${USR_TC.username} LIKE ?`;
                 
-                connection.query(checkQuery, [transformedUsername, transformedPassword], (err, results) => {
+                connection.query(pwQuery, [transformedUsername], (err, results) => {
                     if (err) reject(new Error(err.message));
                     else resolve(results);
                 });
             });
 
-            // Step 2: Update sign-in timestamp for the authenticated user
+            // Step 2: Verify a returned row and PBKDF2 hash against incoming password
             if (!success || success.length === 0) return false; const user = success[0];
+            if (!verifyPasswordPBKDF2(transformedPassword, user[USR_TC.password])) {return false;} // It's better to perform sanitization on the frontend, and hashing on the backend; though for this task, we stuck with sanitization in the backend as well
+            
+            // Step 3: Update sign-in timestamp for the authenticated user
             const updateSuccess = await new Promise((resolve, reject) => {
-                const updateQuery = `UPDATE ${USR_TN} SET ${USR_TC.signintime} = ? WHERE ${USR_TC.username} = ? AND ${USR_TC.password} COLLATE utf8mb4_bin = ?;`;
+                const updateQuery = `UPDATE ${USR_TN} SET ${USR_TC.signintime} = ? WHERE ${USR_TC.username} = ?;`;
 
-                connection.query(updateQuery, [signInAttempt, user[USR_TC.username], password], (err, result) => {
+                connection.query(updateQuery, [signInAttempt, user[USR_TC.username]], (err, result) => {
                     if (err) reject(new Error(err.message));
                     else resolve(result.affectedRows === 1);
                 });
@@ -365,7 +388,8 @@ class DbService
             const success = await new Promise((resolve, reject) => {
                 const query = `INSERT INTO ${USR_TN} (${USR_TC.username}, ${USR_TC.password}, ${USR_TC.registerday}) VALUES (?, ?, ?);`;
                 
-                connection.query(query, [transformedUsername, transformedPassword, dateAdded], (err, result) => {
+                const hashedPw = hashPasswordPBKDF2(transformedPassword);
+                connection.query(query, [transformedUsername, hashedPw, dateAdded], (err, result) => {
                     if (err) reject(new Error(err.message));
                     // Verify 1 row was inserted
                     else resolve(result.affectedRows === 1); 
@@ -390,16 +414,15 @@ class DbService
         {
             const USR_TN = DbService.USERS_TABLE_NAME; const USR_TC = DbService.USERS_TABLE_COLUMNS;
             const transformedUsername = this.#transformUsername(username);
+            
             // use await to call an asynchronous function
-            const response = await new Promise((resolve, reject) => 
-                {
-                    const query = `DELETE FROM ${USR_TN} WHERE ${USR_TC.username} = ?;`;
-                    connection.query(query, [transformedUsername], (err, result) => {
-                        if(err) reject(new Error(err.message));
-                        else resolve(result.affectedRows);
-                    });
-                }
-            );
+            const response = await new Promise((resolve, reject) => {
+                const query = `DELETE FROM ${USR_TN} WHERE ${USR_TC.username} = ?;`;
+                connection.query(query, [transformedUsername], (err, result) => {
+                    if(err) reject(new Error(err.message));
+                    else resolve(result.affectedRows);
+                });
+            });
 
             console.log(response);  // for debugging to see the result of select
             return response === 1 ? true: false;
@@ -456,15 +479,16 @@ class DbService
 
             const response = await new Promise((resolve, reject) => {
                 let query = ''; let queryParams = [];
+                const selectCols = `*`;
 
                 if (exactSearch === false) // Fuzzy search across full name: first name or last name
                 {                    
-                    query = `SELECT * FROM ${USR_TN} WHERE CONCAT(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) LIKE ?;`;
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE CONCAT(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) LIKE ?;`;
                     queryParams = [`%${trimmedName}%`];
                 } 
                 else // Exact match: check full concatenated name OR individual first/last name columns
                 {                    
-                    query = `SELECT * FROM ${USR_TN} WHERE CONCAT(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) = ? OR ${USR_TC.firstname} = ? OR ${USR_TC.lastname} = ?;`;
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE CONCAT(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) = ? OR ${USR_TC.firstname} = ? OR ${USR_TC.lastname} = ?;`;
                     queryParams = [trimmedName, trimmedName, trimmedName];
                 }
 
@@ -486,7 +510,8 @@ class DbService
             const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
 
             const response =  await new Promise((resolve, reject) => {
-                const query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.username} = ?;` 
+                const selectCols = `*`;
+                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.username} = ?;` 
                 connection.query(query, [usernameId], (err, results) => {
                     if (err) reject(new Error(err.message));
                     else resolve(results);
@@ -510,14 +535,16 @@ class DbService
 
             const response = await new Promise((resolve, reject) => {
                 let query = ''; queryParams = [];
+                const selectCols = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.salary}`;
+
                 if (min = max) 
                 { 
-                    query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.salary} = ?;`; 
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.salary} = ?;`; 
                     queryParams = [min];
                 } 
                 else 
                 { 
-                    query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.salary} >= ? AND ${USR_TC.salary} <= ?;`;
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.salary} >= ? AND ${USR_TC.salary} <= ?;`;
                     queryParams = [min, max];
                 }
                 connection.query(query, queryParams, (err, results) => {
@@ -543,14 +570,16 @@ class DbService
 
             const response = await new Promise((resolve, reject) => {
                 let query = ''; queryParams = [];
+                const selectCols = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.age}`;
+
                 if (min = max) 
                 { 
-                    query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.age} == ?;`; 
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.age} == ?;`; 
                     queryParams = [min];
                 } 
                 else 
                 { 
-                    query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.age} >= ? AND ${USR_TC.age} <= ?;`;
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.age} >= ? AND ${USR_TC.age} <= ?;`;
                     queryParams = [min, max];
                 }
                 connection.query(query, queryParams, (err, results) => {
@@ -572,15 +601,17 @@ class DbService
 
             const response = await new Promise((resolve, reject) => {
                 let query = ``; let queryParams = [usernameId];
+                const selectCols = `${USR_TC.username}, ${USR_TC.registerday}, ${USR_TC.signintime}`;
+
                 if (searchSameDay === false)
                 {
-                    query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.registerday} AND ${USR_TC.username} != ? >= 
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.username} != ? AND ${USR_TC.registerday} >= 
                                 (SELECT ${USR_TC.registerday} FROM ${USR_TN} WHERE ${USR_TC.username} = ?) ORDER BY ${USR_TC.registerday} ASC;`
                     queryParams.push(usernameId);
                 }
                 else
                 {
-                    query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.registerday} = 
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.registerday} = 
                                 (SELECT ${USR_TC.registerday} FROM ${USR_TN} WHERE ${USR_TC.username} = ?) ORDER BY ${USR_TC.registerday} ASC;`
                 }
 
@@ -602,7 +633,8 @@ class DbService
             const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
 
             const response = await new Promise((resolve, reject) => {
-                const query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.registerday} AND ${USR_TC.username} != ? >= 
+                const selectCols = `${USR_TC.username}, ${USR_TC.registerday}, ${USR_TC.signintime}`;
+                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.registerday} AND ${USR_TC.username} != ? >= 
                                 (SELECT ${USR_TC.registerday} FROM ${USR_TN} WHERE ${USR_TC.username} = ?) ORDER BY ${USR_TC.registerday} ASC;` 
                 
                 connection.query(query, [usernameId, usernameId], (err, results) => {
@@ -623,7 +655,8 @@ class DbService
             const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
 
             const response = await new Promise((resolve, reject) => {
-                const query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.signintime} = NULL OR ${USR_TC.signintime} ;` 
+                const selectCols = `${USR_TC.username}, ${USR_TC.registerday}, ${USR_TC.signintime}`;
+                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.signintime} = NULL OR ${USR_TC.signintime} ;` 
                 connection.query(query, [], (err, results) => {
                     if (err) reject(new Error(err.message));
                     else resolve(results);
@@ -644,7 +677,8 @@ class DbService
             // Using JS here is better because we avoid using CAST. Alternatively, we can use CURDATE() with INTERVAL keyword to search in between as well without having to create new dates
 
             const response = await new Promise((resolve, reject) => {
-                const query = `SELECT * FROM ${USR_TN} WHERE ${USR_TC.signintime} BETWEEN ? AND ?;`;
+                const selectCols = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.signintime}`;
+                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.signintime} BETWEEN ? AND ?;`;
 
                 connection.query(query, [startOfDay, endOfDay], (err, results) => {
                     if (err) reject(new Error(err.message));
