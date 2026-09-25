@@ -254,11 +254,11 @@ class DbService
     /** Helper to transform/format data before writing to DB */
     #transformersUsersMap = new Map([
         [DbService.USERS_TABLE_COLUMNS.username, this.#transformUsername.bind(this)],
-        [DbService.USERS_TABLE_COLUMNS.password, this.#transformPassword.bind(this)],
-        [DbService.USERS_TABLE_COLUMNS.firstname, this.#transformFirstname.bind(this)],
-        [DbService.USERS_TABLE_COLUMNS.lastname, this.#transformLastname.bind(this)],
-        [DbService.USERS_TABLE_COLUMNS.salary, this.#transformSalary.bind(this)],
-        [DbService.USERS_TABLE_COLUMNS.age, this.#transformAge.bind(this)]
+        [DbService.USERS_TABLE_COLUMNS.password, (val) => this.#transformPassword(val, true)],
+        [DbService.USERS_TABLE_COLUMNS.firstname, (val) => this.#transformFirstname(val)],
+        [DbService.USERS_TABLE_COLUMNS.lastname, (val) => this.#transformLastname(val)],
+        [DbService.USERS_TABLE_COLUMNS.salary, (val) => this.#transformSalary(val)],
+        [DbService.USERS_TABLE_COLUMNS.age, (val) => this.#transformAge(val)]
     ]);
 
     #transformToValidInput(val) {
@@ -278,13 +278,15 @@ class DbService
         return trimmed.length >= 2 ? trimmed : undefined;
     }
 
-    // Note here, we don't run the crypto funcs
-    #transformPassword(val) {
+    // Note here, we don't run the crypto funcs necessarily
+    #transformPassword(val, cryptoRun = false) {
         val = this.#transformToValidInput(val);
         if (typeof val !== 'string') return undefined;
 
-        const trimmed = val.trim();
-        return trimmed.length >= 8 ? trimmed: undefined;
+        const trimmed = val.trim(); 
+        if (trimmed.length < 8) return undefined;
+        
+        return cryptoRun === true ? hashPasswordPBKDF2(trimmed): trimmed;
     }
 
     #transformFirstname(val) {
@@ -433,7 +435,7 @@ class DbService
     async updateDetailsByUsername(data = {}, username) 
     {
         try {
-            const USR_TN = DbService.USERS_TABLE_NAME;
+            const USR_TN = DbService.USERS_TABLE_NAME; const USR_TC = DbService.USERS_TABLE_COLUMNS;
             const setClauses = []; const queryParams = [];
 
             // For every key value pair given
@@ -444,7 +446,7 @@ class DbService
                 {                    
                     // Get precise field transformer or fall back to raw value
                     const transform = this.#transformersUsersMap.get(key);
-                    const processedValue = transform ? transform(value): value;
+                    const processedValue = transform ? transform(value) : value;
 
                     // Only append valid, successfully parsed attributes
                     if (processedValue !== undefined) { setClauses.push(`${key} = ?`); queryParams.push(processedValue); }
@@ -455,7 +457,7 @@ class DbService
             if (setClauses.length === 0) return false;
 
             queryParams.push(username); // The very last ? refers to the username ID
-            const query = `UPDATE ${USR_TN} SET ${setClauses.join(', ')} WHERE id = ?;`;
+            const query = `UPDATE ${USR_TN} SET ${setClauses.join(', ')} WHERE ${USR_TC.username} = ?;`;
 
             const response = await new Promise((resolve, reject) => {
                 connection.query(query, queryParams, (err, result) => {
