@@ -65,7 +65,7 @@ Arrow functions have a few notable features:
 // We have to run this through the XAMMP directory, not open the HTML on its own!
 import { USERS_TABLE_NAME, USERS_TABLE_COLUMNS } from '../Public/constantsSQL.js';
 
-const columnLabels = {
+const columnLabels = Object.freeze({
     [USERS_TABLE_COLUMNS.username]: "Username",
     [USERS_TABLE_COLUMNS.firstname]: "First Name",
     [USERS_TABLE_COLUMNS.lastname]: "Last Name",
@@ -73,12 +73,12 @@ const columnLabels = {
     [USERS_TABLE_COLUMNS.age]: "Age",
     [USERS_TABLE_COLUMNS.registerday]: "Date Added",
     [USERS_TABLE_COLUMNS.signintime]: "Last Sign-In"
-};
+});
 
 function displayUserTable() 
 {
     const thead = document.querySelector('#userDisplayTable thead');
-    let headerHTML = `<tr><th>#</th>`; // #1 or #2, etc...
+    let headerHTML = `<tr><th>#</th>`; // #1 or #2, etc..., unnecessary when displaying the current user
 
     // Object.entries returns [colKey, label] pairs, note the use of sql-column here with the appropriate key!
     Object.entries(columnLabels).forEach(([colKey, label]) => {
