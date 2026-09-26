@@ -311,12 +311,30 @@ class DbService
     }
     // #endregion helper update funcs
 
-    async getAllUsersData()
+    // Private helper strictly for pagination on SELECT queries
+    #returnOffsetSTMT(page = 1, sortColumn = DbService.USERS_TABLE_COLUMNS.username, isAscending = true) 
+    {
+        // Ensure valid page number (minimum 1); we can instead do this outside the function, ensuring that the valid page 
+        // const validPage = Math.max(1, parseInt(page, 10) || 1);
+        
+        // Calculate offset dynamically per request, fetch 1 extra row to calculate hasNextPage
+        const offset = (page - 1) * DbService.#offset;
+        const fetchLimit = DbService.#limit;        
+        const direction = isAscending ? 'ASC' : 'DESC';
+
+        // MUST BE: ORDER BY ... LIMIT ... OFFSET ...
+        return `ORDER BY ${sortColumn} ${direction} LIMIT ${fetchLimit} OFFSET ${offset};`;
+    }
+    
+    // Extract the first few users
+    async getAllUsersData(page = 1)
     {
         try {
+            page = constantsJS.fixPage(page);
+
            // use await to call an asynchronous function
            const response = await new Promise((resolve, reject) => {
-                const query = `SELECT * FROM ${DbService.USERS_TABLE_NAME};`;
+                const query = `SELECT * FROM ${DbService.USERS_TABLE_NAME} ${this.#returnOffsetSTMT(page)};`;
                 connection.query(query, (err, results) => {
                     if(err) reject(new Error(err.message));
                     else resolve(results);
@@ -472,24 +490,26 @@ class DbService
     }
 
     // #region Search 
-    async searchByUsersName(name, exactSearch = false) 
+    // Should be the default search
+    async searchByUsersName(page, name, exactSearch = false) 
     {
         try {
             const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
-            const trimmedName = name.trim();
+            page = constantsJS.fixPage(page);
+            const trimmedName = name.trim(); 
 
             const response = await new Promise((resolve, reject) => {
                 let query = ''; let queryParams = [];
-                const selectCols = `*`;
+                const selectCols = `*`; const paginationSTMT = `${this.#returnOffsetSTMT(page)}`;
 
                 if (exactSearch === false) // Fuzzy search across full name: first name or last name
                 {                    
-                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE CONCAT(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) LIKE ?;`;
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE CONCAT(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) LIKE ? ${paginationSTMT};`;
                     queryParams = [`%${trimmedName}%`];
                 } 
                 else // Exact match: check full concatenated name OR individual first/last name columns
                 {                    
-                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE CONCAT(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) = ? OR ${USR_TC.firstname} = ? OR ${USR_TC.lastname} = ?;`;
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE CONCAT(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) = ? OR ${USR_TC.firstname} = ? OR ${USR_TC.lastname} = ? ${paginationSTMT};`;
                     queryParams = [trimmedName, trimmedName, trimmedName];
                 }
 
@@ -504,15 +524,17 @@ class DbService
         catch (error) { console.log(error); return false; }
     }
 
-    async searchByUsersID(usernameId)
+    // 
+    async searchByUsersID(page, usernameId)
     {
         try 
         {
             const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
+            page = constantsJS.fixPage(page);
 
             const response =  await new Promise((resolve, reject) => {
-                const selectCols = `*`;
-                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.username} = ?;` 
+                const selectCols = `*`; const paginationSTMT = `${this.#returnOffsetSTMT(page)}`;
+                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.username} = ? ${paginationSTMT};` 
                 connection.query(query, [usernameId], (err, results) => {
                     if (err) reject(new Error(err.message));
                     else resolve(results);
@@ -524,11 +546,13 @@ class DbService
         catch (error) { console.log(error); return false; }
     }
 
-    async searchBetweenUsersSalary(salary1, salary2)
+    async searchBetweenUsersSalary(page, salary1, salary2)
     {       
         try 
         {
             const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
+            page = constantsJS.fixPage(page);
+
             let min, max; salary1 = parseFloat(salary1); salary2 = parseFloat(salary2)        
             if (salary1 === salary2) { min = salary1; max = min; }
             else if (salary1 > salary2) { min = salary1; max = salary2; }
@@ -537,15 +561,16 @@ class DbService
             const response = await new Promise((resolve, reject) => {
                 let query = ''; queryParams = [];
                 const selectCols = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.salary}`;
-
+                const paginationSTMT = `${this.#returnOffsetSTMT(page, USR_TC.salary, false)}`; // Descending order on salary
+                
                 if (min = max) 
                 { 
-                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.salary} = ?;`; 
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.salary} = ? ${paginationSTMT};`; 
                     queryParams = [min];
                 } 
                 else 
                 { 
-                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.salary} >= ? AND ${USR_TC.salary} <= ?;`;
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.salary} >= ? AND ${USR_TC.salary} <= ? ${paginationSTMT};`;
                     queryParams = [min, max];
                 }
                 connection.query(query, queryParams, (err, results) => {
@@ -559,12 +584,14 @@ class DbService
         catch (error) { console.log(error); return false; }
     }
 
-    async searchBetweenUsersAges(age1, age2)
+    async searchBetweenUsersAges(page, age1, age2)
     {       
         try 
         {
             const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
-            let min, max; age1 = parseInt(age1); age2 = parseInt(age2)        
+            page = constantsJS.fixPage(page);
+
+            let min, max; age1 = parseInt(age1); age2 = parseInt(age2);
             if (age1 === age2) { min = age1; max = min; }
             else if (age1 > age2) { min = age1; max = age2; }
             else { min = age2; max = age1; }
@@ -572,10 +599,11 @@ class DbService
             const response = await new Promise((resolve, reject) => {
                 let query = ''; queryParams = [];
                 const selectCols = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.age}`;
+                const paginationSTMT = `${this.#returnOffsetSTMT(page, USR_TC.age, true)}`; // Ascending order on age
 
                 if (min = max) 
                 { 
-                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.age} == ?;`; 
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.age} == ? ${paginationSTMT};`; 
                     queryParams = [min];
                 } 
                 else 
@@ -594,26 +622,28 @@ class DbService
         catch (error) { console.log(error); return false; }
     }
 
-    async searchUsersRegistrationTimeAfterUserID(usernameId, searchSameDay = false)
+    async searchUsersRegistrationTimeAfterUserID(page, usernameId, searchSameDay = false)
     {
         try 
         {
             const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
+            page = constantsJS.fixPage(page);
 
             const response = await new Promise((resolve, reject) => {
                 let query = ``; let queryParams = [usernameId];
                 const selectCols = `${USR_TC.username}, ${USR_TC.registerday}, ${USR_TC.signintime}`;
+                const paginationSTMT = `${this.#returnOffsetSTMT(page, USR_TC.registerday, true)}`; // Ascending order on register day
 
                 if (searchSameDay === false)
                 {
                     query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.username} != ? AND ${USR_TC.registerday} >= 
-                                (SELECT ${USR_TC.registerday} FROM ${USR_TN} WHERE ${USR_TC.username} = ?) ORDER BY ${USR_TC.registerday} ASC;`
+                                (SELECT ${USR_TC.registerday} FROM ${USR_TN} WHERE ${USR_TC.username} = ?) ${paginationSTMT};`
                     queryParams.push(usernameId);
                 }
                 else
                 {
                     query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.registerday} = 
-                                (SELECT ${USR_TC.registerday} FROM ${USR_TN} WHERE ${USR_TC.username} = ?) ORDER BY ${USR_TC.registerday} ASC;`
+                                (SELECT ${USR_TC.registerday} FROM ${USR_TN} WHERE ${USR_TC.username} = ?) ${paginationSTMT};`
                 }
 
                 connection.query(query, queryParams, (err, results) => {
@@ -627,16 +657,19 @@ class DbService
         catch (error) { console.log(error); return false; }
     }
 
-    async searchUsersRegistrationTimeSameAsUserID(usernameId)
+    async searchUsersRegistrationTimeSameAsUserID(page, usernameId)
     {
         try 
         {
             const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
+            page = constantsJS.fixPage(page);
 
             const response = await new Promise((resolve, reject) => {
                 const selectCols = `${USR_TC.username}, ${USR_TC.registerday}, ${USR_TC.signintime}`;
+                const paginationSTMT = this.#returnOffsetSTMT(page, ${USR_TC.registerday}, true); // ASCENDING ORDER
+
                 const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.registerday} AND ${USR_TC.username} != ? >= 
-                                (SELECT ${USR_TC.registerday} FROM ${USR_TN} WHERE ${USR_TC.username} = ?) ORDER BY ${USR_TC.registerday} ASC;` 
+                                (SELECT ${USR_TC.registerday} FROM ${USR_TN} WHERE ${USR_TC.username} = ?) ${paginationSTMT};` 
                 
                 connection.query(query, [usernameId, usernameId], (err, results) => {
                     if (err) reject(new Error(err.message));
@@ -649,15 +682,18 @@ class DbService
         catch (error) { console.log(error); return false; }
     }
 
-    async searchNeverSignedInUsers()
+    async searchNeverSignedInUsers(page)
     {
         try 
         {
             const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
+            page = constantsJS.fixPage(page);
 
             const response = await new Promise((resolve, reject) => {
                 const selectCols = `${USR_TC.username}, ${USR_TC.registerday}, ${USR_TC.signintime}`;
-                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.signintime} = NULL OR ${USR_TC.signintime} ;` 
+                const paginationSTMT = this.#returnOffsetSTMT(page, `${USR_TC.registerday}`, true); // Ascending order on the register day
+
+                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.signintime} = NULL ${paginationSTMT};` 
                 connection.query(query, [], (err, results) => {
                     if (err) reject(new Error(err.message));
                     else resolve(results);
@@ -669,17 +705,21 @@ class DbService
         catch (error) { console.log(error); return false; }
     }
 
-    async searchUsersSignedInToday() 
+    async searchUsersSignedInToday(page) 
     {
         try {
             const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
+            page = constantsJS.fixPage(page);
+
             const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
             const endOfDay = new Date(startOfDay); endOfDay.setHours(23, 59, 59, 999);
             // Using JS here is better because we avoid using CAST. Alternatively, we can use CURDATE() with INTERVAL keyword to search in between as well without having to create new dates
 
             const response = await new Promise((resolve, reject) => {
                 const selectCols = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.signintime}`;
-                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.signintime} BETWEEN ? AND ?;`;
+                const paginationSTMT = this.#returnOffsetSTMT(page, `${USR_TC.signintime}`, false); // DESCENDING ORDER ON SIGN IN TIME
+
+                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.signintime} BETWEEN ? AND ? ${paginationSTMT};`;
 
                 connection.query(query, [startOfDay, endOfDay], (err, results) => {
                     if (err) reject(new Error(err.message));

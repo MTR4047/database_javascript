@@ -221,29 +221,29 @@ const SEARCH_USER_ACTIONS = Object.freeze({
 
 // A MAP which defines allowable searchable functions for the singular search endpoint
 const SEARCH_USER_ACTIONS = new Map([
-    [ "searchByUsersName", async (db, params) => 
-        { const { name } = params; return await db.searchByUsersName(name); }
+    [ "searchByUsersName", async (db, page, params) => 
+        { const { name } = params; return await db.searchByUsersName(page, name); }
     ],
-    [ "searchByUsersID", async (db, params) => 
-        { const { username } = params; return await db.searchByUsersID(username); }
+    [ "searchByUsersID", async (db, page, params) => 
+        { const { username } = params; return await db.searchByUsersID(page, username); }
     ],
-    [ "searchBetweenUsersSalary", async (db, params) => 
-        { const { minSalary, maxSalary } = params; return await db.searchBetweenUsersSalary(minSalary, maxSalary); }
+    [ "searchBetweenUsersSalary", async (db, page, params) => 
+        { const { minSalary, maxSalary } = params; return await db.searchBetweenUsersSalary(page, minSalary, maxSalary); }
     ],
-    [ "searchBetweenUsersAges", async (db, params) => 
-        { const { minAge, maxAge } = params; return await db.searchBetweenUsersAges(minAge, maxAge); }
+    [ "searchBetweenUsersAges", async (db, page, params) => 
+        { const { minAge, maxAge } = params; return await db.searchBetweenUsersAges(page, minAge, maxAge); }
     ],
-    [ "searchUsersRegistrationAfterUserID", async (db, params) => 
-        { const { username } = params; return await db.searchUsersRegistrationTimeAfterUserID(username); }
+    [ "searchUsersRegistrationAfterUserID", async (db, page, params) => 
+        { const { username } = params; return await db.searchUsersRegistrationTimeAfterUserID(page, username); }
     ],
-    [ "searchUsersRegistrationTimeSameAsUserID", async (db, params) => 
-        { const { username } = params; return await db.searchUsersRegistrationTimeSameAsUserID(username); }
+    [ "searchUsersRegistrationTimeSameAsUserID", async (db, page, params) => 
+        { const { username } = params; return await db.searchUsersRegistrationTimeSameAsUserID(page, username); }
     ],
-    [ "searchNeverSignedInUsers", async (db, params) => 
-        { const { } = params; return await db.searchNeverSignedInUsers(); }
+    [ "searchNeverSignedInUsers", async (db, page, params) => 
+        { const { } = params; return await db.searchNeverSignedInUsers(page); }
     ],
-    [ "searchUsersSignedInToday", async (db, params) => 
-        { const { } = params; return await db.searchUsersSignedInToday(); }
+    [ "searchUsersSignedInToday", async (db, page, params) => 
+        { const { } = params; return await db.searchUsersSignedInToday(page); }
     ]
 ]);
 Object.freeze(SEARCH_USER_ACTIONS);
@@ -255,12 +255,13 @@ app.post('/search/Users/actions', async (request, response) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             action: 'searchByAgeRange',
+            page: 1,
             params: { minAge: 21, maxAge: 35 }
         })
     }).then(res => res.json()).then(result => console.log(result.data));
     */
 
-    const { action, params = {} } = request.body;
+    const { action, page, params = {} } = request.body;
     const searchFunc = SEARCH_USER_ACTIONS.get(action);
 
     let errJson;
@@ -272,7 +273,7 @@ app.post('/search/Users/actions', async (request, response) => {
     }        
     
     const db = dbService.getDbServiceInstance();
-    const result = await searchHandler(db, params);
+    const result = await searchHandler(db, page, params);
     result.then(data => response.json({data: data})).catch(err => console.log(err));
 });
 

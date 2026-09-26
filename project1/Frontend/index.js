@@ -93,6 +93,7 @@ function displayUserTable()
 
 function displaySQLTable(data, tableKey)
 {
+    const tableHead = document.querySelector(`${tableKey} thead`);;
     const tableContents = document.querySelector(`${tableKey} tbody`);
 
 }

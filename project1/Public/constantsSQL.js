@@ -5,3 +5,6 @@ export const USERS_TABLE_COLUMNS = Object.freeze({
     salary: "salary", age: "age",
     registerday: "registerday", signintime: "signintime"
 });
+
+export function fixPage(page) 
+{ return Math.max(1, parseInt(page, 10) || 1); }
