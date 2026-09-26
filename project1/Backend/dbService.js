@@ -66,8 +66,8 @@ function verifyPasswordPBKDF2(password, storedCombinedHash)
 
 class DbService
 {
-    static #offset = 25;
-    static #limit = this.#offset + 1;
+    static #offset = 25; // The frontend simply sensd in the page #, and we multiply using the offset with ((page-1)*offset)
+    static #limit = this.#offset + 1; // The frontend does not see this nor can it modify this, this is simply the limit of rows per page, the +1 here is a trick to enable the "next" button
 
     static getDbServiceInstance() {
         if (!instance) { instance = new DbService(); }
