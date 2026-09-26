@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const mysql = require('mysql');
 const dotenv = require('dotenv');
+const constantsJS = require('../Public/constantsSQL.js');
 dotenv.config(); // read from .env file
 
 let instance = null; 
@@ -65,6 +66,9 @@ function verifyPasswordPBKDF2(password, storedCombinedHash)
 
 class DbService
 {
+    static #offset = 25;
+    static #limit = this.#offset + 1;
+
     static getDbServiceInstance() {
         if (!instance) { instance = new DbService(); }
         return instance;
@@ -235,13 +239,8 @@ class DbService
   // #endregion NAME TABLE FUNCS
 
     // #region NEW Users TABLE FUNCS
-    static USERS_TABLE_NAME = "Users";
-    static USERS_TABLE_COLUMNS = Object.freeze({ 
-        username: "username", password: "password",
-        firstname: "firstname", lastname: "lastname",
-        salary: "salary", age: "age",
-        registerday: "registerday", signintime: "signintime"
-    });
+    static USERS_TABLE_NAME = constantsJS.USERS_TABLE_NAME;
+    static USERS_TABLE_COLUMNS = constantsJS.USERS_TABLE_COLUMNS;
     static ALLOWED_USERS_COLUMNS_SET = new Set(Object.values(DbService.USERS_TABLE_COLUMNS));
     static ALLOWED_USERS_UPDATE_SET = (() => {
         const updateSet = new Set(DbService.ALLOWED_USERS_COLUMNS_SET);

@@ -62,15 +62,58 @@ Arrow functions have a few notable features:
       especially when dealing with callbacks and event handlers.
 */
 
+// We have to run this through the XAMMP directory, not open the HTML on its own!
+import { USERS_TABLE_NAME, USERS_TABLE_COLUMNS } from '../Public/constantsSQL.js';
 
+const columnLabels = {
+    [USERS_TABLE_COLUMNS.username]: "Username",
+    [USERS_TABLE_COLUMNS.firstname]: "First Name",
+    [USERS_TABLE_COLUMNS.lastname]: "Last Name",
+    [USERS_TABLE_COLUMNS.salary]: "Salary",
+    [USERS_TABLE_COLUMNS.age]: "Age",
+    [USERS_TABLE_COLUMNS.registerday]: "Date Added",
+    [USERS_TABLE_COLUMNS.signintime]: "Last Sign-In"
+};
+
+function displayUserTable() 
+{
+    const thead = document.querySelector('#userDisplayTable thead');
+    let headerHTML = `<tr><th>#</th>`; // #1 or #2, etc...
+
+    // Object.entries returns [colKey, label] pairs, note the use of sql-column here with the appropriate key!
+    Object.entries(columnLabels).forEach(([colKey, label]) => {
+        headerHTML += `<th sql-column="${colKey}">${label}</th>`;
+    });
+
+    // Add action columns
+    // headerHTML += `<th>Delete</th><th>Edit</th></tr>`;
+
+    thead.innerHTML = headerHTML;
+}
+
+function displaySQLTable(data, tableKey)
+{
+    const tableContents = document.querySelector(`${tableKey} tbody`);
+
+}
+
+
+document.addEventListener('DOMContentLoaded', function() 
+{
+    console.log(`loaded`)
+    displayUserTable();
+});
+
+/*
 // fetch call is to call the backend
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() 
+{
     // one can point your browser to http://localhost:5050/getAll to check what it returns first.
     fetch('http://localhost:5050/getAll')     
     .then(response => response.json())
     .then(data => loadHTMLTable(data['data']));
 });
-
+*/
 
 // when the addBtn is clicked
 const addBtn = document.querySelector('#add-name-btn');
