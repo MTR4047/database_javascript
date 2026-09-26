@@ -326,15 +326,16 @@ class DbService
         return `ORDER BY ${sortColumn} ${direction} LIMIT ${fetchLimit} OFFSET ${offset};`;
     }
     
-    // Extract the first few users
+    // Extract the first thousand users, pagination here is custom
     async getAllUsersData(page = 1)
     {
         try {
             page = constantsJS.fixPage(page);
+            const offset = 1000;
 
            // use await to call an asynchronous function
            const response = await new Promise((resolve, reject) => {
-                const query = `SELECT * FROM ${DbService.USERS_TABLE_NAME} ${this.#returnOffsetSTMT(page)};`;
+                const query = `SELECT * FROM ${DbService.USERS_TABLE_NAME} ORDER BY ${DbService.USERS_TABLE_COLUMNS.username} ASC LIMIT ${offset + 1} OFFSET ${(page - 1) * offset};`;
                 connection.query(query, (err, results) => {
                     if(err) reject(new Error(err.message));
                     else resolve(results);
@@ -666,7 +667,7 @@ class DbService
 
             const response = await new Promise((resolve, reject) => {
                 const selectCols = `${USR_TC.username}, ${USR_TC.registerday}, ${USR_TC.signintime}`;
-                const paginationSTMT = this.#returnOffsetSTMT(page, ${USR_TC.registerday}, true); // ASCENDING ORDER
+                const paginationSTMT = this.#returnOffsetSTMT(page, `${USR_TC.registerday}`, true); // ASCENDING ORDER
 
                 const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.registerday} AND ${USR_TC.username} != ? >= 
                                 (SELECT ${USR_TC.registerday} FROM ${USR_TN} WHERE ${USR_TC.username} = ?) ${paginationSTMT};` 

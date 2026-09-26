@@ -126,7 +126,7 @@ app.get('/testdb', (request, response) => {
 
 // #region USERS TABLE
 
-app.get('/getAll/Users', (request, response) => {    
+app.get('/getAll/Users/:page', (request, response) => {    
     const db = dbService.getDbServiceInstance();    
     const result =  db.getAllUsersData(); // call a DB function
 
@@ -249,7 +249,7 @@ const SEARCH_USER_ACTIONS = new Map([
 Object.freeze(SEARCH_USER_ACTIONS);
 
 app.post('/search/Users/actions', async (request, response) => {
-    /* EXAMPLE USE on the FRONTEND
+    /* EXAMPLE USE on the FRONTEND, note how we send in the page number 
     fetch('/search/Users/actions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
