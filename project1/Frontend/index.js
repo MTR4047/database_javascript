@@ -85,17 +85,85 @@ function displayUserTable()
         headerHTML += `<th sql-column="${colKey}">${label}</th>`;
     });
 
-    // Add action columns
+    // TODO: Add action columns
     // headerHTML += `<th>Delete</th><th>Edit</th></tr>`;
 
     thead.innerHTML = headerHTML;
 }
 
-function displaySQLTable(data, tableKey)
+// Response data, note how we don't paginate here, the frontend sends the page, then gets returned a paginated query
+function displaySQLTable(responseData, tableKey)
 {
     const tableHead = document.querySelector(`${tableKey} thead`);;
     const tableContents = document.querySelector(`${tableKey} tbody`);
 
+    if (!responseData || !responseData.data || responseData.data.length === 0) {
+        tableHead.innerHTML = '';
+        tableContents.innerHTML = '<tr><td colspan="100%">No records found.</td></tr>';
+        return;
+    }
+
+    // Extract the rows from the response data
+    const rows = responseData.data; const returnedKeys = Object.keys(rows[0]);
+
+    // Begin building the header HTML using the columns label constant
+    let headerHTML;
+    returnedKeys.forEach(colKey => { // Check each column key from the query data and match
+        // Fallback: Use columnLabels[colKey] if mapped; otherwise, use colKey as-is
+        const displayLabel = columnLabels[colKey] || colKey;
+        headerHTML += `<th sql-column="${colKey}">${displayLabel}</th>`; // Custom SQL-Column attribute
+    });    
+
+    // Build the body data (table rows, with table data corresponding) dynamically using the extracted keys
+    let bodyHTML = ``;
+    rows.forEach((row, index) => { // For each row of data from the query data
+        bodyHTML += `<tr data-index=${index} data-username="${row[USERS_TABLE_COLUMNS.username]}">`; // Row index counter
+
+        // Match each cell value to its respective column key
+        returnedKeys.forEach(colKey => {
+            const value = row[colKey] !== null && row[colKey] !== undefined ? row[colKey]: '';
+            bodyHTML += `<td>${value}</td>`;
+        });
+
+        // TODO: Implement the action buttons bound to the record's primary identifier
+        
+        bodyHTML += `</tr>`;
+    });
+
+    tableHead.innerHTML = headerHTML;
+    tableContents.innerHTML = bodyHTML;
+}
+
+/**Updates or creates a row in a target table, matching cells strictly to the preexisting thead columns.
+ * @param {string} tableId - HTML ID of the target table (such as 'userDisplayTable')
+ * @param {number} index - Target row position (0-based) inside tbody.children
+ * @param {Object} responseData - Record object returned from the backend
+ */
+function changeHTMLTableElement(responseData, tableKey, idx)
+{
+    // In this function, we assume we have the columns set up already, this way we do not disrespect the order set
+    const table = document.querySelector(`${tableKey}`); if (!table) return;
+    const tableHeadCols = table.querySelectorAll('thead th[sql-column]');
+    const tableContents = table.querySelector('tbody'); if (!tableContents) return;
+    // const tableHead = document.querySelector(`${tableKey} thead`); 
+    // const tableContents = document.querySelector(`${tableKey} tbody`); if (!tableContents) return;
+    
+    let targetRow = tableContents.children[idx];
+    const isNewRow = !targetRow;
+    if (isNewRow) { targetRow = document.createElement('tr'); }
+
+    let rowCellsHTML = ``;
+    tableHeadCols.forEach(th => { // For each header column, get its sql-column for parsing
+        const colKey = th.getAttribute('sql-column');
+        const value = (responseData && responseData[colKey] !== undefined && responseData[colKey] !== null) ? responseData[colKey]: '';            
+        rowCellsHTML += `<td>${value}</td>`;
+    });
+
+    targetRow.innerHTML = rowCellsHTML;
+    targetRow.setAttribute('data-username', usernameVal);
+
+    // If it was a newly created row for a backfilled pagination slot, append it to tbody
+    if (isNewRow) { tableContents.appendChild(targetRow); }
 }
 
 

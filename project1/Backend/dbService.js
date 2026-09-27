@@ -485,7 +485,7 @@ class DbService
             });
             
             console.log(response);
-            return response === 1? true: false;
+            return response;
         } 
         catch (error) { console.log(error); return false; }
     }
