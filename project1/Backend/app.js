@@ -127,8 +127,12 @@ app.get('/testdb', (request, response) => {
 // #region USERS TABLE
 
 app.get('/getAll/Users/:page', (request, response) => {    
-    const db = dbService.getDbServiceInstance();    
-    const result =  db.getAllUsersData(); // call a DB function
+    const db = dbService.getDbServiceInstance();
+    
+    // For example: const res = await fetch(`/getAll/Users/${currentPage}?offset=25?sortBy=username`);
+    const { offset, order } = request.query; // Everything following the pages with '?';     
+    offset = isNaN(offset) ? 100: Math.min(offset, 100); // Here, we must pass in valid data
+    const result = db.getAllUsersData(page, offset, order); // call a DB function
 
     result.then(data => response.json({data: data})).catch(err => console.log(err));
 });

@@ -66,7 +66,7 @@ function verifyPasswordPBKDF2(password, storedCombinedHash)
 
 class DbService
 {
-    static #offset = 25; // The frontend simply sensd in the page #, and we multiply using the offset with ((page-1)*offset)
+    static #offset = constantsJS.tableLimit; // The frontend simply sensd in the page #, and we multiply using the offset with ((page-1)*offset)
     static #limit = this.#offset + 1; // The frontend does not see this nor can it modify this, this is simply the limit of rows per page, the +1 here is a trick to enable the "next" button
 
     static getDbServiceInstance() {
@@ -327,15 +327,14 @@ class DbService
     }
     
     // Extract the first thousand users, pagination here is custom
-    async getAllUsersData(page = 1)
+    async getAllUsersData(page = 1, offset = DbService.#offset, order = DbService.USERS_TABLE_COLUMNS.username)
     {
         try {
             page = constantsJS.fixPage(page);
-            const offset = 1000;
 
            // use await to call an asynchronous function
            const response = await new Promise((resolve, reject) => {
-                const query = `SELECT * FROM ${DbService.USERS_TABLE_NAME} ORDER BY ${DbService.USERS_TABLE_COLUMNS.username} ASC LIMIT ${offset + 1} OFFSET ${(page - 1) * offset};`;
+                const query = `SELECT * FROM ${DbService.USERS_TABLE_NAME} ORDER BY ${order} ASC LIMIT ${offset + 1} OFFSET ${(page - 1) * offset};`;
                 connection.query(query, (err, results) => {
                     if(err) reject(new Error(err.message));
                     else resolve(results);

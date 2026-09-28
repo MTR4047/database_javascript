@@ -1,3 +1,5 @@
+
+export const tableLimit = 25;
 export const USERS_TABLE_NAME = "Users";
 export const USERS_TABLE_COLUMNS = Object.freeze({ 
     username: "username", password: "password",
