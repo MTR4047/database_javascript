@@ -8,7 +8,7 @@ dotenv.config()
 
 const app = express();
 const dbService = require('./dbService');
-const { srchOps } = require('../Public/constantsSQL.js');
+const constantsSQL = require('../Public/constantsSQL.js');
 
 app.use(cors());
 app.use(express.json())
@@ -337,14 +337,14 @@ const SEARCH_USER_ACTIONS = Object.freeze({
     ]);
 */
 const SEARCH_USER_ACTIONS = new Map([
-    [srchOps.searchByUsersName.key,                         async (db, page, params) => { return await db.searchByUsersName(page, params.name) } ],
-    [srchOps.searchByUsersID.key,                           async (db, page, params) => { return await db.searchByUsersID(page, params.username) } ],
-    [srchOps.searchBetweenUsersSalary.key,                  async (db, page, params) => { return await db.searchBetweenUsersSalary(page, params.minSalary, params.maxSalary) } ],
-    [srchOps.searchBetweenUsersAges.key,                    async (db, page, params) => { return await db.searchBetweenUsersAges(page, params.minAge, params.maxAge) } ],
-    [srchOps.searchUsersRegistrationAfterUserID.key,        async (db, page, params) => { return await db.searchUsersRegistrationTimeAfterUserID(page, params.username) } ],
-    [srchOps.searchUsersRegistrationTimeSameAsUserID.key,   async (db, page, params) => { return await db.searchUsersRegistrationTimeSameAsUserID(page, params.username) } ],
-    [srchOps.searchNeverSignedInUsers.key,                  async (db, page) => { return await db.searchNeverSignedInUsers(page) } ],
-    [srchOps.searchUsersSignedInToday.key,                  async (db, page) => { return await db.searchUsersSignedInToday(page) } ]
+    [constantsSQL.srchOps.searchByUsersName.key,                         async (db, page, params) => { return await db.searchByUsersName(page, params.name) } ],
+    [constantsSQL.srchOps.searchByUsersID.key,                           async (db, page, params) => { return await db.searchByUsersID(page, params.username) } ],
+    [constantsSQL.srchOps.searchBetweenUsersSalary.key,                  async (db, page, params) => { return await db.searchBetweenUsersSalary(page, params.minSalary, params.maxSalary) } ],
+    [constantsSQL.srchOps.searchBetweenUsersAges.key,                    async (db, page, params) => { return await db.searchBetweenUsersAges(page, params.minAge, params.maxAge) } ],
+    [constantsSQL.srchOps.searchUsersRegistrationAfterUserID.key,        async (db, page, params) => { return await db.searchUsersRegistrationTimeAfterUserID(page, params.username) } ],
+    [constantsSQL.srchOps.searchUsersRegistrationTimeSameAsUserID.key,   async (db, page, params) => { return await db.searchUsersRegistrationTimeSameAsUserID(page, params.username) } ],
+    [constantsSQL.srchOps.searchNeverSignedInUsers.key,                  async (db, page) => { return await db.searchNeverSignedInUsers(page) } ],
+    [constantsSQL.srchOps.searchUsersSignedInToday.key,                  async (db, page) => { return await db.searchUsersSignedInToday(page) } ]
 ]);
 
 Object.freeze(SEARCH_USER_ACTIONS);

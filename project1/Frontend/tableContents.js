@@ -11,6 +11,11 @@ const columnLabels = Object.freeze({
     [USERS_TABLE_COLUMNS.signintime]: "Last Sign-In"
 });
 
+/** Effectively, we built a drop down menu for the search operations. It is denoted by labels found from the srchOps, which will get sent to app.js. 
+ * Because of the keys, tableContents.js would know the correct fetch method as long as the label remains valid.
+ * The label here are the UI friendly versions, the type correspoinds to the HTML input types. THere is yet to be a builder function from this.
+ * The placeholder here indicates what value to show in a faded manner when the input fields are empty. *
+ */
 const searchSelect = Object.freeze({
     [srchOps.searchByUsersName.key]: {
         label: "Search by user's first or last name",
@@ -53,8 +58,8 @@ const searchSelect = Object.freeze({
 });
 
 const usernm_attrib = "data-username";
-const sessionToken = sessionStorage.getItem('sessionToken');
-const userName = sessionStorage.getItem('loggedInUser');
+const sessionToken = sessionStorage.getItem('sessionToken'); // Session token to send to the app.js
+const userName = sessionStorage.getItem('loggedInUser'); // Username for reference
 
 /* Have to add this here for specific funcs!
 headers : { 'user-session-token': sessionToken }
@@ -121,11 +126,7 @@ function displaySQLTable(response, tableKey)
         });
 
         /* Action Buttons Cell
-        bodyHTML += `
-            <td>
-                <button class="delete-btn" data-username="${row[USERS_TABLE_COLUMNS.username]}">Delete</button>
-            </td>
-        `;
+        bodyHTML += `<td> <button class="delete-btn" data-username="${row[USERS_TABLE_COLUMNS.username]}">Delete</button> </td>`;
         */
 
         bodyHTML += `</tr>`;
@@ -231,22 +232,63 @@ function deleteRowFromTable(username, tableKey)
     else return;
 }
 
+/** Helper to update button state based on backend response (e.g. res.hasNextPage)
+ *  
+ */ 
+function updatePaginationUI(paginationContainerSelector, currentPage, hasNextPage) 
+{
+    const container = document.querySelector(paginationContainerSelector);
+    if (!container) return;
 
-async function loadUserData(sortBy = `username`) 
+    const prevBtn = container.querySelector('.prev-btn');
+    const nextBtn = container.querySelector('.next-btn');
+    const pageNumSpan = container.querySelector('.page-num');
+
+    if (pageNumSpan) pageNumSpan.textContent = `Page ${currentPage}`;
+    if (prevBtn) prevBtn.disabled = currentPage <= 1;
+    if (nextBtn) nextBtn.disabled = !hasNextPage;
+}
+
+let currentAllUsersPage = 1;
+async function loadUserData(page = 1, sortBy = `username`) 
 {
     try {
-        const response = await fetch(`http://localhost:5050/getAll/Users/1?offset=${tableLimit}&sortBy=${sortBy}`);
-        const data = await response.json();
-        console.log(data);
-        displaySQLTable(data, `#allUserDisplayTable`);
+        const response = await fetch(`http://localhost:5050/getAll/Users/${page}?offset=${tableLimit}&sortBy=${sortBy}`);
+        const resData = await response.json(); console.log(resData);
+        
+        displaySQLTable(resData, `#allUserDisplayTable`);
+        const hasNextPage = resData.data.length > tableLimit;
+        // console.log(`resData.data.length vs resData.length: `, resData.data.length, resData.length);
+        updatePaginationUI('#allUserDisplayTable-pagination', page, hasNextPage);  
     } catch (err) {
         console.error('Failed to load table data:', err);
     }
 }
 
+// Attach Pagination Click Listeners
+document.addEventListener('DOMContentLoaded', () => {
+    const paginationWrapper = document.querySelector('#allUserDisplayTable-pagination');
+    
+    if (paginationWrapper) {
+        paginationWrapper.querySelector('.prev-btn').addEventListener('click', () => {
+            if (currentAllUsersPage > 1) {
+                currentAllUsersPage--;
+                loadUserData(currentAllUsersPage);
+            }
+        });
+
+        paginationWrapper.querySelector('.next-btn').addEventListener('click', () => {
+            currentAllUsersPage++;
+            loadUserData(currentAllUsersPage);
+        });
+    }
+
+    // Initial load
+    loadUserData(currentAllUsersPage);
+});
+
 document.addEventListener('DOMContentLoaded', function() 
 {
     console.log(`loaded`);
     displayUserTablesHeader();
-    loadUserData();
 });

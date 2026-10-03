@@ -70,3 +70,26 @@ button {
     cursor: pointer;
     margin: 0 4px;
 }
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.pagination-controls button {
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+.pagination-controls button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.pagination-controls .page-num {
+    font-weight: bold;
+    color: #333;
+}
