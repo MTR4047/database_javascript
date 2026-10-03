@@ -1,60 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="stylesheet.css">
-  <title>DB Project 1 new</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="stylesheets.css">
+    <title>Login - DSE 6100 Project</title>
 </head>
 <body>
-    <main>        
-        <label>Name:</label>
-        <input type="text" id="name-input">
-        <button id="add-name-btn">Add Name</button>
+    <h1>DSE 6100 Project: Users</h1>
+    
+    <form id="user-sign-in"> <h2>Sign In</h2>
+        <label for="username-input">Username:</label> 
+        <input type="text" id="username-input" 
+            pattern="[^'&quot;?!=\\`\\;&lt;&gt;]+" title="Characters ' &quot; ? ! = ` \ ; < > are not allowed."
+            required >
+        <br>        
         
-    <br><br><br>
-    <div> 
-        <input placeholder="search by name" id="search-input">
-        <button id="search-btn">Search</button>
-    </div>
-    
-    <table id="table">
-        <thead>
-            <th>Id</th>
-            <th>Name</th>
-            <th>Date Added</th>
-            <th>Delete</th>
-            <th>Edit</th>  
-        </thead>
-        <tbody></tbody>
-    </table>
-    
-    <section hidden id="update-row">
-        <label>Name:</label>
-        <input type="text" id="update-name-input">
-        <button id="update-row-btn" value="">Update</button>
-    </section>
+        <label for="password-input">Password:</label> 
+        <input type="password" id="password-input"  minlength="8"
+            pattern="[^'&quot;?!=\\`\\;&lt;&gt;]+" title="Characters ' &quot; ? ! = ` \ ; < > are not allowed."
+            required>
+        <br>
+        
+        <p id="error-message" style="color: red; margin-top: 10px; font-size: 0.9rem; text-align: center;"></p>
 
-    <br><br>
-    <table id="userDisplayTable">
-        <thead></thead>
-        <tbody></tbody>
-    </table>
+        <div class="actions">
+            <button type="submit" id="sign-in-button">Sign In</button>
+            <button type="button" id="register-button">Register</button>
+        </div>
+    </form>
 
-    <br><br>
-    <table id="allUserDisplayTable">
-        <thead></thead>
-        <tbody></tbody>
-    </table>
-
-    <br><br>
-    <table id ="selectTable">
-        <thead id="sqlColumns">
-            
-        </thead>
-        <tbody></tbody>
-    </table>
-</main>
-<script src="index.js" type="module"></script>
+    <script src="index.js" type="module"></script>
 </body>
 </html>

@@ -1,11 +1,11 @@
 main {
-    width: 50%;
-    margin: 50px auto;
+    width: 75%;
+    margin: 25px auto;
     text-align: center;
 }
 
 table {
-    margin: 50px auto;
+    margin: 25px auto;
 }
 
 table, th, td {
@@ -15,4 +15,58 @@ table, th, td {
 
 th, td {
     padding: 5px;
+}
+
+body {
+    font-family: sans-serif;
+    background-color: #f4f6f8;
+    padding-top: 25px;
+}
+
+h1 {
+    font-size: 1.8rem;
+    color: #1a252f;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+#user-sign-in {
+    background: #ffffff;
+    width: 300px;
+    
+    /* Centered horizontally: 0 top/bottom, auto left/right */
+    margin: 0 auto; 
+    
+    padding: 24px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    text-align: right; /* Aligns label text neatly next to inputs */
+}
+
+#user-sign-in h2 {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+#user-sign-in label {
+    font-size: 0.9rem;
+    margin-right: 4px;
+}
+
+#user-sign-in input {
+    margin: 6px 0;
+    padding: 6px;
+    width: 160px;
+}
+
+#user-sign-in .actions {
+    text-align: center;
+    margin-top: 18px;
+}
+
+button {
+    padding: 6px 14px;
+    cursor: pointer;
+    margin: 0 4px;
 }

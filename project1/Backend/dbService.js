@@ -330,11 +330,13 @@ class DbService
     async getAllUsersData(page = 1, offset = DbService.#offset, order = DbService.USERS_TABLE_COLUMNS.username)
     {
         try {
+            const USR_TC = DbService.USERS_TABLE_COLUMNS;
             page = constantsJS.fixPage(page);
 
            // use await to call an asynchronous function
            const response = await new Promise((resolve, reject) => {
-                const query = `SELECT * FROM ${DbService.USERS_TABLE_NAME} ORDER BY ${order} ASC LIMIT ${offset + 1} OFFSET ${(page - 1) * offset};`;
+                const selection = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.salary}, ${USR_TC.age},${USR_TC.registerday}, ${USR_TC.signintime}`
+                const query = `SELECT ${selection} FROM ${DbService.USERS_TABLE_NAME} ORDER BY ${order} ASC LIMIT ${offset + 1} OFFSET ${(page - 1) * offset};`;
                 connection.query(query, (err, results) => {
                     if(err) reject(new Error(err.message));
                     else resolve(results);
@@ -353,10 +355,10 @@ class DbService
         try {
             const USR_TN = DbService.USERS_TABLE_NAME; const USR_TC = DbService.USERS_TABLE_COLUMNS;
 
-            const signInAttempt = new Date();
+            const signInAttempt = new Date(); 
             const transformedUsername = this.#transformUsername(username); const transformedPassword = this.#transformPassword(password);
             // Abort if input validation failed
-            if (!transformedUsername || !transformedPassword) { return false; }
+            if (!transformedUsername || !transformedPassword) { return false; }            
 
             const success = await new Promise((resolve, reject) => {
                 const pwQuery = `SELECT ${USR_TC.username}, ${USR_TC.password}, ${USR_TC.firstname}, ${USR_TC.lastname} FROM ${USR_TN} WHERE ${USR_TC.username} LIKE ?`;
@@ -403,7 +405,7 @@ class DbService
             const transformedUsername = this.#transformUsername(username); const transformedPassword = this.#transformPassword(password);
             // Abort if input validation failed
             if (!transformedUsername || !transformedPassword) { return false; }
-
+            
             const success = await new Promise((resolve, reject) => {
                 const query = `INSERT INTO ${USR_TN} (${USR_TC.username}, ${USR_TC.password}, ${USR_TC.registerday}) VALUES (?, ?, ?);`;
                 
@@ -425,7 +427,7 @@ class DbService
 
         } 
         catch (error) { console.log(error); return false; }
-   }
+    }
 
    async deleteRowByUsername(username)
    {
