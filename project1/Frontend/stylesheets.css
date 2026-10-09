@@ -86,8 +86,7 @@ button {
     font-weight: bold;
 }
 
-#signout-btn, 
-#delete-account-btn {
+#signout-btn, #delete-account-btn {
     padding: 6px 12px;
     cursor: pointer;
 }
@@ -96,6 +95,7 @@ button {
     color: #d9534f;
 }
 
+/* Pagination */
 .pagination-controls {
     display: flex;
     align-items: center;

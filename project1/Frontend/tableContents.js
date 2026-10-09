@@ -1,5 +1,4 @@
 // We have to run this through the XAMMP directory, not open the HTML on its own!
-import { response } from 'express';
 import { USERS_TABLE_NAME, USERS_TABLE_COLUMNS, tableLimit, srchOps } from '../Public/constantsSQL.js';
 
 const columnLabels = Object.freeze({
