@@ -1,4 +1,5 @@
 // We have to run this through the XAMMP directory, not open the HTML on its own!
+import { response } from 'express';
 import { USERS_TABLE_NAME, USERS_TABLE_COLUMNS, tableLimit, srchOps } from '../Public/constantsSQL.js';
 
 const columnLabels = Object.freeze({
@@ -267,6 +268,80 @@ async function loadUserData(page = 1, sortBy = `username`)
 
 // Attach Pagination Click Listeners
 document.addEventListener('DOMContentLoaded', () => {
+    
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Redirect to login if user isn't authenticated
+    if (!sessionToken || !userName) { window.location.href = 'index.html'; return; }
+
+    // 1. Render Hello message
+    const welcomeMsg = document.querySelector('#welcome-message');
+    if (welcomeMsg) { welcomeMsg.textContent = `Hello, ${userName}`; }
+
+    // 2. Sign Out Action
+    const signOutBtn = document.querySelector('#signout-btn');
+    if (signOutBtn) {
+        signOutBtn.addEventListener('click', () => {
+            const confirmed = confirm('Are you sure you want to sign out?');
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch('http://localhost:5050/update/Users/signOut', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'user-session-token': sessionToken },
+                    body: JSON.stringify({ username: userName })
+                });
+
+                // Clear active session from client storage
+                if (response.ok) {
+                    
+                    sessionStorage.clear();
+                    window.location.href = 'index.html';
+                }
+            }
+            catch (err) 
+            {
+                console.error('Sign out request failed:', err);
+                alert('An error occurred while attempting to sign out of your account.');
+            }            
+        });
+    }
+
+    // 3. Delete Account Action
+    const deleteAccountBtn = document.querySelector('#delete-account-btn');
+    if (deleteAccountBtn) {
+        deleteAccountBtn.addEventListener('click', async () => {
+            const confirmed = confirm(`WARNING: Are you sure you want to permanently delete your account (${userName})? This action cannot be undone.`);
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch('http://localhost:5050/delete/Users', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json', 'user-session-token': sessionToken },
+                    body: JSON.stringify({ username: userName })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) 
+                {
+                    alert('Your account has been successfully deleted.');
+                    sessionStorage.clear();
+                    window.location.href = 'index.html';
+                }
+                else { alert(`Deletion failed: ${result.error || 'Unknown error'}`); }
+            } 
+            catch (err) 
+            {
+                console.error('Delete request failed:', err);
+                alert('An error occurred while attempting to delete your account.');
+            }
+        });
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {   
     const paginationWrapper = document.querySelector('#allUserDisplayTable-pagination');
     
     if (paginationWrapper) {

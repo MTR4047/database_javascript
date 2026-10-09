@@ -182,6 +182,44 @@ app.post('/update/Users/signIn', (request, response) => {
         });
 });
 
+app.post('/update/Users/signOut', authenticateToken, (request, response) => {
+    // const db = dbService.getDbServiceInstance();
+    // const result = db.signInUser(username, password);
+
+    const token = request.headers['user-session-token'];
+    if (token) 
+    { 
+        activeUserSessions.delete(token); 
+        response.json( { success: true } );
+    }
+    else response.json( { success: false } );
+});
+
+/* Here, on the app.js, we have to pass something like fetch(http://localhost:5050/delete/Users/${username}),  
+{ method: 'DELETE', headers: { 'user-session-token': sessionToken }, body: JSON.stringify({username: username}) }).then
+*/
+app.delete('/delete/Users', authenticateToken, (request, response) => 
+{
+    const { username } = request.body; console.log("delete " + username);   
+    
+    const authUser = request.username;
+    if (username !== authUser) 
+    { return response.status(403).json({ success: false, error: 'User must be authenticated and can only delete their own records.' }); }
+
+    const token = request.headers['user-session-token'];
+    const db = dbService.getDbServiceInstance();    
+    const result = db.deleteRowByUsername(username);
+    result.then(data => {
+            // Remove active token from server memory map; Return success payload to client
+            if (token) { activeUserSessions.delete(token); }            
+            response.json({ success: true });
+        })
+        .catch(err => {
+            console.error('Database deletion error:', err);
+            response.status(500).json({ success: false, error: 'Database deletion failed.' });
+        });
+});
+
 /*
 app.post('/insert/Users', (request, response) => {
     console.log("app: register a user.");
@@ -219,26 +257,6 @@ app.get('/getAll/Users/:page', (request, response) => {
     const result = db.getAllUsersData(page, offsetNorm, order); // call a DB function
 
     result.then(data => response.json({data: data})).catch(err => console.log(err));
-});
-
-/* Here, on the app.js, we have to pass something like fetch(http://localhost:5050/delete/Users/${username}),  
-{ method: 'DELETE', headers: { 'user-session-token': sessionToken }, body: JSON.stringify({username: username}) }).then
-*/
-app.delete('/delete/Users', authenticateToken, (request, response) => 
-{
-    const { username } = request.body; console.log("delete " + username);   
-    
-    const authUser = request.username;
-    if (username !== authUser) 
-    { return response.status(403).json({ success: false, error: 'User must be authenticated and can only delete their own records.' }); }
-
-    const db = dbService.getDbServiceInstance();    
-    const result = db.deleteRowByUsername(username);
-    result.then(data => response.json({success: true}))
-    .catch(err => {
-        console.log(err);
-        response.status(500).json({ success: false, error: 'Database deletion failed.' });
-    });
 });
 
 /* Here, on the app.js, we have to pass something like 

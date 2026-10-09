@@ -71,6 +71,31 @@ button {
     margin: 0 4px;
 }
 
+/* Upper dashboard */
+#dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ccc;
+}
+
+#welcome-message {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+#signout-btn, 
+#delete-account-btn {
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+#delete-account-btn {
+    color: #d9534f;
+}
+
 .pagination-controls {
     display: flex;
     align-items: center;
