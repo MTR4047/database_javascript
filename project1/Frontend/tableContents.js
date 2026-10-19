@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Sign Out Action
     const signOutBtn = document.querySelector('#signout-btn');
     if (signOutBtn) {
-        signOutBtn.addEventListener('click', () => {
+        signOutBtn.addEventListener('click', async () => {
             const confirmed = confirm('Are you sure you want to sign out?');
             if (!confirmed) return;
 
