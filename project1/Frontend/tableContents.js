@@ -287,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const response = await fetch('http://localhost:5050/update/Users/signOut', {
-                    method: 'PATCH',
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'user-session-token': sessionToken },
                     body: JSON.stringify({ username: userName })
                 });
