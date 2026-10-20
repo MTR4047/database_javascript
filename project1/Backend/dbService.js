@@ -57,10 +57,10 @@ function hashPasswordPBKDF2(password)
     return `${salt}:${iterations}:${derivedKey.toString('hex')}`;
 }
 
-function verifyPasswordPBKDF2(password, storedCombinedHash) 
+function verifyPasswordPBKDF2(plainPWD, storedCombinedHash) 
 {
     const [salt, iterations, originalHash] = storedCombinedHash.split(':');    
-    const derivedKey = crypto.pbkdf2Sync(password, salt, parseInt(iterations, 10), 64, 'sha512');
+    const derivedKey = crypto.pbkdf2Sync(plainPWD, salt, parseInt(iterations, 10), 64, 'sha512');
     return derivedKey.toString('hex') === originalHash; // Rehash to compare
 }
 
@@ -461,7 +461,7 @@ class DbService
             for (const [key, value] of Object.entries(data)) 
             {
                 // Fast O(1) check against the allowable updatable Set
-                if (ALLOWED_UPDATE_SET.has(key)) 
+                if (ALLOWED_USERS_UPDATE_SET.has(key)) 
                 {                    
                     // Get precise field transformer or fall back to raw value
                     const transform = this.#transformersUsersMap.get(key);
@@ -506,12 +506,12 @@ class DbService
 
                 if (exactSearch === false) // Fuzzy search across full name: first name or last name
                 {                    
-                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE CONCAT(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) LIKE ? ${paginationSTMT};`;
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE CONCAT_WS(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) LIKE ? ${paginationSTMT};`;
                     queryParams = [`%${trimmedName}%`];
                 } 
                 else // Exact match: check full concatenated name OR individual first/last name columns
                 {                    
-                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE CONCAT(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) = ? OR ${USR_TC.firstname} = ? OR ${USR_TC.lastname} = ? ${paginationSTMT};`;
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE CONCAT_WS(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) = ? OR ${USR_TC.firstname} = ? OR ${USR_TC.lastname} = ? ${paginationSTMT};`;
                     queryParams = [trimmedName, trimmedName, trimmedName];
                 }
 
@@ -636,7 +636,7 @@ class DbService
 
                 if (searchSameDay === false)
                 {
-                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.username} != ? AND ${USR_TC.registerday} >= 
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.username} != ? AND ${USR_TC.registerday} > 
                                 (SELECT ${USR_TC.registerday} FROM ${USR_TN} WHERE ${USR_TC.username} = ?) ${paginationSTMT};`
                     queryParams.push(usernameId);
                 }
@@ -668,7 +668,7 @@ class DbService
                 const selectCols = `${USR_TC.username}, ${USR_TC.registerday}, ${USR_TC.signintime}`;
                 const paginationSTMT = this.#returnOffsetSTMT(page, `${USR_TC.registerday}`, true); // ASCENDING ORDER
 
-                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.registerday} AND ${USR_TC.username} != ? >= 
+                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.username} != ? AND ${USR_TC.registerday} = 
                                 (SELECT ${USR_TC.registerday} FROM ${USR_TN} WHERE ${USR_TC.username} = ?) ${paginationSTMT};` 
                 
                 connection.query(query, [usernameId, usernameId], (err, results) => {
@@ -693,7 +693,7 @@ class DbService
                 const selectCols = `${USR_TC.username}, ${USR_TC.registerday}, ${USR_TC.signintime}`;
                 const paginationSTMT = this.#returnOffsetSTMT(page, `${USR_TC.registerday}`, true); // Ascending order on the register day
 
-                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.signintime} = NULL ${paginationSTMT};` 
+                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.signintime} IS NULL ${paginationSTMT};` 
                 connection.query(query, [], (err, results) => {
                     if (err) reject(new Error(err.message));
                     else resolve(results);

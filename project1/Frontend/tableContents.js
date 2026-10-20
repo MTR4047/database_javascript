@@ -44,7 +44,7 @@ const searchSelect = Object.freeze({
         actions: { [srchOps.searchUsersRegistrationAfterUserID.params.username]: { label: "Target Username", placeholder: "e.g. alice", type: "text" } }
     },
     [srchOps.searchUsersRegistrationTimeSameAsUserID.key]: {
-        label: "Search users registered at same time as username",
+        label: "Search users registered at same day as username",
         actions: { [srchOps.searchUsersRegistrationTimeSameAsUserID.params.username]: { label: "Target Username", placeholder: "e.g. bob", type: "text" } }
     },
     [srchOps.searchNeverSignedInUsers.key]: {

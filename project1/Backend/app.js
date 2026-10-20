@@ -256,6 +256,20 @@ app.get('/getAll/Users/:page', (request, response) => {
     result.then(data => response.json({data: data})).catch(err => console.log(err));
 });
 
+// Here, because we have a special case of "all" where we have to call another function, we both map this and have an endpoint
+app.get('/search/Users/name/:name/:page', authenticateToken, (request, response) => 
+{
+    const {name} = request.params; console.log(name);
+    const {page} = parseInt(request.params) ?? 1;
+    let result;
+
+    const db = dbService.getDbServiceInstance();
+    if(name.toLowerCase() === "all") result = db.getAllUsersData(page, 100);
+    else result =  db.searchByUsersName(name); // call a DB function
+
+    result.then(data => response.json({data: data})).catch(err => console.log(err));
+});
+
 /* Here, on the app.js, we have to pass something like 
 fetch('http://localhost:5050/update/Users', {
     method: 'PATCH',
@@ -400,19 +414,6 @@ app.post('/search/Users/actions', authenticateToken, async (request, response) =
             message: 'Database query execution failed.' 
         });
     }
-});
-
-// Here, because we have a special case of "all" where we have to call another function, we both map this and have an endpoint
-app.get('/search/Users/name/:name', authenticateToken, (request, response) => 
-{
-    const {name} = request.params; console.log(name);
-    let result;
-
-    const db = dbService.getDbServiceInstance();
-    if(name.toLowerCase() === "all") result = db.getAllUsersData();
-    else result =  db.searchByUsersName(name); // call a DB function
-
-    result.then(data => response.json({data: data})).catch(err => console.log(err));
 });
 
 /*
