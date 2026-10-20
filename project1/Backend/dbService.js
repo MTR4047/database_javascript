@@ -555,13 +555,12 @@ class DbService
             const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
             page = constantsJS.fixPage(page);
 
-            let min, max; salary1 = parseFloat(salary1); salary2 = parseFloat(salary2)        
-            if (salary1 === salary2) { min = salary1; max = min; }
-            else if (salary1 > salary2) { min = salary1; max = salary2; }
-            else { min = salary2; max = salary1; }
+            let min, max; salary1 = parseFloat(salary1); salary2 = parseFloat(salary2);
+            min = Math.min(salary1, salary2);
+            max = Math.max(salary1, salary2);
 
             const response = await new Promise((resolve, reject) => {
-                let query = ''; queryParams = [];
+                let query = ''; let queryParams = [];
                 const selectCols = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.salary}`;
                 const paginationSTMT = `${this.#returnOffsetSTMT(page, USR_TC.salary, false)}`; // Descending order on salary
                 
@@ -594,18 +593,17 @@ class DbService
             page = constantsJS.fixPage(page);
 
             let min, max; age1 = parseInt(age1); age2 = parseInt(age2);
-            if (age1 === age2) { min = age1; max = min; }
-            else if (age1 > age2) { min = age1; max = age2; }
-            else { min = age2; max = age1; }
+            min = Math.min(age1, age2);
+            max = Math.max(age1, age2);
 
             const response = await new Promise((resolve, reject) => {
-                let query = ''; queryParams = [];
+                let query = ''; let queryParams = [];
                 const selectCols = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.age}`;
                 const paginationSTMT = `${this.#returnOffsetSTMT(page, USR_TC.age, true)}`; // Ascending order on age
 
                 if (min = max) 
                 { 
-                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.age} == ? ${paginationSTMT};`; 
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.age} = ? ${paginationSTMT};`; 
                     queryParams = [min];
                 } 
                 else 

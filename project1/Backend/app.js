@@ -183,16 +183,13 @@ app.post('/update/Users/signIn', (request, response) => {
 });
 
 app.post('/update/Users/signOut', authenticateToken, (request, response) => {
-    // const db = dbService.getDbServiceInstance();
-    // const result = db.signInUser(username, password);
-
     const token = request.headers['user-session-token'];
-    if (token) 
-    { 
-        activeUserSessions.delete(token); 
-        response.json( { success: true } );
+    
+    if (token) {
+        activeUserSessions.delete(token);
     }
-    else response.json( { success: false } );
+    
+    response.json({ success: true, message: 'Signed out successfully.' });
 });
 
 /* Here, on the app.js, we have to pass something like fetch(http://localhost:5050/delete/Users/${username}),  
@@ -383,17 +380,26 @@ app.post('/search/Users/actions', authenticateToken, async (request, response) =
     const { action, page, params = {} } = request.body;
     const searchFunc = SEARCH_USER_ACTIONS.get(action);
 
-    let errJson;
     if (!searchFunc) 
     {
-        errJson = response.status(400).json({ success: false, message: `Invalid or unauthorized search action: '${action}`});
-        console.log(errJson);
-        return errJson;
-    }        
-    
-    const db = dbService.getDbServiceInstance();
-    const result = await searchHandler(db, page, params);
-    result.then(data => response.json({data: data})).catch(err => console.log(err));
+        console.log(`Invalid or unauthorized search action: '${action}'`);
+        return response.status(400).json({ success: false, message: `Invalid or unauthorized search action: '${action}'` });
+    }
+
+    try 
+    {
+        const db = dbService.getDbServiceInstance();
+        const data = await searchFunc(db, page, params); 
+        return response.json({ data: data });
+    } 
+    catch (err) 
+    {
+        console.error('Search action failed:', err);
+        return response.status(500).json({ 
+            success: false, 
+            message: 'Database query execution failed.' 
+        });
+    }
 });
 
 // Here, because we have a special case of "all" where we have to call another function, we both map this and have an endpoint
