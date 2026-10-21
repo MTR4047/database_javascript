@@ -52,7 +52,7 @@ const searchSelect = Object.freeze({
         actions: {}
     },
     [srchOps.searchUsersSignedInToday.key]: {
-        label: "Search users signed in today",
+        label: "Search users registered today",
         actions: {}
     }
 });

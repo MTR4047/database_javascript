@@ -260,12 +260,12 @@ app.get('/getAll/Users/:page', (request, response) => {
 app.get('/search/Users/name/:name/:page', authenticateToken, (request, response) => 
 {
     const {name} = request.params; console.log(name);
-    const {page} = parseInt(request.params) ?? 1;
+    const page = parseInt(request.params.page, 10) || 1;
     let result;
 
     const db = dbService.getDbServiceInstance();
     if(name.toLowerCase() === "all") result = db.getAllUsersData(page, 100);
-    else result =  db.searchByUsersName(name); // call a DB function
+    else result =  db.searchByUsersName(page, name); // call a DB function
 
     result.then(data => response.json({data: data})).catch(err => console.log(err));
 });

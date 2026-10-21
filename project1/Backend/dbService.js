@@ -332,7 +332,7 @@ class DbService
         try {
             const USR_TC = DbService.USERS_TABLE_COLUMNS;
             page = constantsJS.fixPage(page);
-
+            if (!DbService.ALLOWED_USERS_COLUMNS_SET.has(order)) order = DbService.USERS_TABLE_COLUMNS.username;
            // use await to call an asynchronous function
            const response = await new Promise((resolve, reject) => {
                 const selection = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.salary}, ${USR_TC.age},${USR_TC.registerday}, ${USR_TC.signintime}`
@@ -461,7 +461,7 @@ class DbService
             for (const [key, value] of Object.entries(data)) 
             {
                 // Fast O(1) check against the allowable updatable Set
-                if (ALLOWED_USERS_UPDATE_SET.has(key)) 
+                if (DbService.ALLOWED_USERS_UPDATE_SET.has(key)) 
                 {                    
                     // Get precise field transformer or fall back to raw value
                     const transform = this.#transformersUsersMap.get(key);
@@ -506,12 +506,12 @@ class DbService
 
                 if (exactSearch === false) // Fuzzy search across full name: first name or last name
                 {                    
-                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE CONCAT_WS(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) LIKE ? ${paginationSTMT};`;
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE CONCAT_WS(' ', ${USR_TC.firstname}, ${USR_TC.lastname}) LIKE ? ${paginationSTMT};`;
                     queryParams = [`%${trimmedName}%`];
                 } 
                 else // Exact match: check full concatenated name OR individual first/last name columns
                 {                    
-                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE CONCAT_WS(${USR_TC.firstname}, ' ', ${USR_TC.lastname}) = ? OR ${USR_TC.firstname} = ? OR ${USR_TC.lastname} = ? ${paginationSTMT};`;
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE CONCAT_WS(' ', ${USR_TC.firstname}, ${USR_TC.lastname}) = ? OR ${USR_TC.firstname} = ? OR ${USR_TC.lastname} = ? ${paginationSTMT};`;
                     queryParams = [trimmedName, trimmedName, trimmedName];
                 }
 
@@ -564,7 +564,7 @@ class DbService
                 const selectCols = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.salary}`;
                 const paginationSTMT = `${this.#returnOffsetSTMT(page, USR_TC.salary, false)}`; // Descending order on salary
                 
-                if (min = max) 
+                if (min === max) 
                 { 
                     query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.salary} = ? ${paginationSTMT};`; 
                     queryParams = [min];
@@ -601,14 +601,14 @@ class DbService
                 const selectCols = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.age}`;
                 const paginationSTMT = `${this.#returnOffsetSTMT(page, USR_TC.age, true)}`; // Ascending order on age
 
-                if (min = max) 
+                if (min === max) 
                 { 
                     query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.age} = ? ${paginationSTMT};`; 
                     queryParams = [min];
                 } 
                 else 
                 { 
-                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.age} >= ? AND ${USR_TC.age} <= ?;`;
+                    query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.age} >= ? AND ${USR_TC.age} <= ? ${paginationSTMT};`;
                     queryParams = [min, max];
                 }
                 connection.query(query, queryParams, (err, results) => {
@@ -711,17 +711,14 @@ class DbService
             const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;
             page = constantsJS.fixPage(page);
 
-            const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-            const endOfDay = new Date(startOfDay); endOfDay.setHours(23, 59, 59, 999);
-            // Using JS here is better because we avoid using CAST. Alternatively, we can use CURDATE() with INTERVAL keyword to search in between as well without having to create new dates
 
             const response = await new Promise((resolve, reject) => {
-                const selectCols = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.signintime}`;
-                const paginationSTMT = this.#returnOffsetSTMT(page, `${USR_TC.signintime}`, false); // DESCENDING ORDER ON SIGN IN TIME
+                const selectCols = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.registerday}`;
+                const paginationSTMT = this.#returnOffsetSTMT(page); // Ascending order on username
 
-                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.signintime} BETWEEN ? AND ? ${paginationSTMT};`;
+                const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.registerday} = CURDATE() ${paginationSTMT};`;
 
-                connection.query(query, [startOfDay, endOfDay], (err, results) => {
+                connection.query(query, [], (err, results) => {
                     if (err) reject(new Error(err.message));
                     else resolve(results);
                 });
