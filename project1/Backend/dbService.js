@@ -502,7 +502,8 @@ class DbService
 
             const response = await new Promise((resolve, reject) => {
                 let query = ''; let queryParams = [];
-                const selectCols = `*`; const paginationSTMT = `${this.#returnOffsetSTMT(page)}`;
+                const selectCols = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.salary}, ${USR_TC.age}, ${USR_TC.registerday}, ${USR_TC.signintime}`; // no password
+                const paginationSTMT = `${this.#returnOffsetSTMT(page)}`;
 
                 if (exactSearch === false) // Fuzzy search across full name: first name or last name
                 {                    
@@ -535,7 +536,8 @@ class DbService
             page = constantsJS.fixPage(page);
 
             const response =  await new Promise((resolve, reject) => {
-                const selectCols = `*`; const paginationSTMT = `${this.#returnOffsetSTMT(page)}`;
+                const selectCols = `${USR_TC.username}, ${USR_TC.firstname}, ${USR_TC.lastname}, ${USR_TC.salary}, ${USR_TC.age}, ${USR_TC.registerday}, ${USR_TC.signintime}`; // no password
+                const paginationSTMT = `${this.#returnOffsetSTMT(page)}`;
                 const query = `SELECT ${selectCols} FROM ${USR_TN} WHERE ${USR_TC.username} = ? ${paginationSTMT};` 
                 connection.query(query, [usernameId], (err, results) => {
                     if (err) reject(new Error(err.message));

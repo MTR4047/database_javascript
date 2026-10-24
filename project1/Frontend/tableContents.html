@@ -16,15 +16,12 @@
     </header>
 
     <main>
+    <h2>My Account</h2>
     <table id="userDisplayTable">
         <thead></thead>
         <tbody></tbody>
     </table>
-    <div class="pagination-controls" id="userDisplayTable-pagination">
-        <button class="prev-btn" disabled>&laquo; Previous</button>
-        <span class="page-num">Page 1</span>
-        <button class="next-btn">Next &raquo;</button>
-    </div>
+    <p id="profile-message"></p>
 
     <br><br>
     <table id="allUserDisplayTable">
@@ -38,6 +35,17 @@
     </div>
 
     <br><br>
+    <section id="search-panel">
+        <h2>Search Users</h2>
+        <form id="search-form" novalidate>
+            <label for="search-type">Search type:</label>
+            <select id="search-type"></select>
+            <div id="search-inputs"></div>
+            <button type="submit" id="search-btn">Search</button>
+            <p id="search-error"></p>
+        </form>
+    </section>
+
     <table id ="selectTable">
         <thead id="sqlColumns">
             
@@ -47,10 +55,10 @@
     <div class="pagination-controls" id="selectTable-pagination">
         <button class="prev-btn" disabled>&laquo; Previous</button>
         <span class="page-num">Page 1</span>
-        <button class="next-btn">Next &raquo;</button>
+        <button class="next-btn" disabled>Next &raquo;</button>
     </div>
 
 </main>
 <script src="tableContents.js" type="module"></script>
 </body>
-</html>
+</html>

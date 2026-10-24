@@ -118,3 +118,73 @@ button {
     font-weight: bold;
     color: #333;
 }
+
+/* Search panel */
+#search-panel {
+    background: #ffffff;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 16px 24px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+#search-panel h2 {
+    margin-top: 0;
+}
+
+#search-form, #search-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+#search-inputs {
+    width: 100%;
+}
+
+#search-form select, #search-form input {
+    padding: 6px;
+}
+
+#search-error {
+    width: 100%;
+    min-height: 1.2em;
+    margin: 4px 0 0;
+    color: #d9534f;
+    font-size: 0.9rem;
+}
+
+.search-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.search-hint {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* Editable My Account row */
+#userDisplayTable input {
+    width: 100px;
+    padding: 4px;
+}
+
+#userDisplayTable td:last-child {
+    white-space: nowrap;
+}
+
+#profile-message {
+    min-height: 1.2em;
+    color: #d9534f;
+    font-size: 0.9rem;
+}
+
+#profile-message.success {
+    color: #2e7d32;
+}

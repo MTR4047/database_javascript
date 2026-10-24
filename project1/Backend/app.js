@@ -1,5 +1,4 @@
 // Backend: application services, accessible by URIs
-// Git Test - KP - KP
 
 const express = require('express');
 const cors = require ('cors');
@@ -301,7 +300,11 @@ app.patch('/update/Users', authenticateToken, (request, response) =>
     const db = dbService.getDbServiceInstance();
     const result = db.updateDetailsByUsername(updateData, username);
 
-    result.then(data => response.json({success: true})).catch(err => console.log(err)); 
+    result.then(data => {
+        // updateDetailsByUsername returns the number of rows updated, or false if the update failed
+        if (data) response.json({ success: true });
+        else response.status(400).json({ success: false, error: 'Profile could not be updated. Check the values and try again.' });
+    }).catch(err => { console.log(err); response.status(500).json({ success: false, error: 'Server error during profile update.' }); });
 });
 
 // #region OTHER READ OPERATIONS
