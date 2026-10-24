@@ -1,3 +1,7 @@
+-- Create Database
+CREATE DATABASE IF NOT EXISTS web_app;
+USE web_app;
+
 -- Table
 CREATE TABLE Users(
    username VARCHAR(50) primary key NOT NULL,
