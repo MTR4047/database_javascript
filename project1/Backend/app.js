@@ -341,9 +341,9 @@ const SEARCH_USER_ACTIONS = Object.freeze({
         const { } = params;
         return await db.searchNeverSignedInUsers();
     },
-    "searchUsersSignedInToday": async (db, params) => {
+    "searchUsersRegisteredToday": async (db, params) => {
         const { } = params;
-        return await db.searchUsersSignedInToday();
+        return await db.searchUsersRegisteredToday();
     }
 });
 */
@@ -377,7 +377,7 @@ const SEARCH_USER_ACTIONS = new Map([
     [constantsSQL.srchOps.searchUsersRegistrationAfterUserID.key,        async (db, page, params) => { return await db.searchUsersRegistrationTimeAfterUserID(page, params.username) } ],
     [constantsSQL.srchOps.searchUsersRegistrationTimeSameAsUserID.key,   async (db, page, params) => { return await db.searchUsersRegistrationTimeSameAsUserID(page, params.username) } ],
     [constantsSQL.srchOps.searchNeverSignedInUsers.key,                  async (db, page) => { return await db.searchNeverSignedInUsers(page) } ],
-    [constantsSQL.srchOps.searchUsersSignedInToday.key,                  async (db, page) => { return await db.searchUsersSignedInToday(page) } ]
+    [constantsSQL.srchOps.searchUsersRegisteredToday.key,                  async (db, page) => { return await db.searchUsersRegisteredToday(page) } ]
 ]);
 
 Object.freeze(SEARCH_USER_ACTIONS);
@@ -474,10 +474,10 @@ app.get('/search/Users/searchUsersRegistrationSameAsUserID/:userId', (request, r
     result.then(data => response.json({data: data})).catch(err => console.log(err));
 });
 
-app.get('/search/Users/searchUsersSignedInToday', (request, response) => 
+app.get('/search/Users/searchUsersRegisteredToday', (request, response) => 
 {
     const db = dbService.getDbServiceInstance();    
-    const result = db.searchUsersSignedInToday();
+    const result = db.searchUsersRegisteredToday();
 
     result.then(data => response.json({data: data})).catch(err => console.log(err));
 });

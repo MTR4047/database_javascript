@@ -51,7 +51,7 @@ const searchSelect = Object.freeze({
         label: "Search users who never signed in",
         actions: {}
     },
-    [srchOps.searchUsersSignedInToday.key]: {
+    [srchOps.searchUsersRegisteredToday.key]: {
         label: "Search users registered today",
         actions: {}
     }

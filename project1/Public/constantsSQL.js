@@ -16,7 +16,7 @@ export const srchOps = Object.freeze({
     searchUsersRegistrationAfterUserID:         Object.freeze({ key: "searchUsersRegistrationAfterUserID", params: { username: "username" }} ),
     searchUsersRegistrationTimeSameAsUserID:    Object.freeze({ key: "searchUsersRegistrationTimeSameAsUserID", params: { username: "username" }} ),
     searchNeverSignedInUsers:                   Object.freeze({ key: "searchNeverSignedInUsers", params: {}} ),
-    searchUsersSignedInToday:                   Object.freeze({ key: "searchUsersSignedInToday", params: {}} )
+    searchUsersRegisteredToday:                   Object.freeze({ key: "searchUsersRegisteredToday", params: {}} )
 });
 
 export function fixPage(page) 

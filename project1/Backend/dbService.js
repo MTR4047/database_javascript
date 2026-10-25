@@ -24,19 +24,6 @@ const connection = mysql.createConnection({
      port: process.env.DB_PORT
 });
 
-
-// if you configure directly in this file, there is a security issue, but it will work
-/*
-const connection = mysql.createConnection({
-     host:"localhost",
-     user:"root",        
-     password:"",
-     database:"web_app",
-     port:3306
-});
-*/
-
-
 connection.connect((err) => {
      if(err){
         console.log(err.message);
@@ -707,7 +694,7 @@ class DbService
         catch (error) { console.log(error); return false; }
     }
 
-    async searchUsersSignedInToday(page) 
+    async searchUsersRegisteredToday(page) 
     {
         try {
             const USR_TC = DbService.USERS_TABLE_COLUMNS; const USR_TN = DbService.USERS_TABLE_NAME;

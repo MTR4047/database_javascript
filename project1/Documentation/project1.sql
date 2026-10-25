@@ -1,8 +1,9 @@
+-- Git Test
 -- Create Database
 CREATE DATABASE IF NOT EXISTS web_app;
 USE web_app;
 
--- Table
+-- Create Table
 CREATE TABLE Users(
    username VARCHAR(50) primary key NOT NULL,
    password VARCHAR(255) NOT NULL,
@@ -14,7 +15,7 @@ CREATE TABLE Users(
    signintime DATETIME DEFAULT NULL
 );
 
--- INSERTS
+-- Insert Users
 INSERT INTO Users (username, password, firstname, lastname, salary, age, registerday, signintime) VALUES
 ('alex_m', '67b80b0495c636cd9ef99da91070056d:10000:d52e33a6b0809987e17812164a7e50f165741921652a4f3f993acba7cb0fa1551a6c5c305da1af0ecdb830d9aefea6f65e4b77f8625faf493523b7a1d7fd7905', 'Alex', 'Morgan', 75000.00, 29, '2026-01-15', NULL), -- Password is: Pass2026Alex
 ('sarah_c', 'b0cd82240f16b45840e1b7013b520690:10000:522a1e6df1e205e3a3a3197dd38fa113170cb49661d1188c2727b1e505cb94298a18e8fd65c4b2b20a5afff83079a8ed21f00140262bdc2d43df7207db9f0401', 'Sarah', 'Chen', 82500.50, 34, '2026-02-01', NULL), -- Password is: SecurePass#99
@@ -68,7 +69,7 @@ WHERE salary >= ? AND salary <= ?
 ORDER BY salary DESC;
 -- Example: 60000, 80000
 -- Returns: carlos_r, alex_m, priya_s, diana_v, lena_c, jordan_p
--- (If X = Y, the app uses WHERE salary = ? instead; e.g. 79000 returns carlos_r)
+-- (If X = Y, the app uses WHERE salary = ? instead | 79000 returns carlos_r)
 
 -- 6. Search all users whose ages are between X and Y
 SELECT username, firstname, lastname, age FROM Users
@@ -76,7 +77,7 @@ WHERE age >= ? AND age <= ?
 ORDER BY age ASC;
 -- Example: 25, 35
 -- Returns: jordan_p, david_l, priya_s, alex_m, diana_v, rachel_g, omar_h, sarah_c
--- (If X = Y, the app uses WHERE age = ? instead; e.g. 30 returns diana_v)
+-- (If X = Y, the app uses WHERE age = ? instead | 30 returns diana_v)
 
 -- 7. Search users who registered after john registered
 SELECT username, registerday, signintime FROM Users
@@ -108,7 +109,7 @@ ORDER BY username ASC;
 -- Returns: rachel_g (registered with CURDATE(), so she counts as today on the day the data is loaded)
 
 -- -----------------------------------------
--- OTHER STATEMENTS THE APP USES
+-- Change Statements
 -- -----------------------------------------
 
 -- List all users on the dashboard
