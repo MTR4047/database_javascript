@@ -1,4 +1,3 @@
--- Git Test
 -- Create Database
 CREATE DATABASE IF NOT EXISTS web_app;
 USE web_app;
