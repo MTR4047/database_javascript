@@ -44,21 +44,23 @@
             <button type="submit" id="search-btn">Search</button>
             <p id="search-error"></p>
         </form>
+
+        <table id ="selectTable">
+            <thead id="sqlColumns">
+                
+            </thead>
+            <tbody></tbody>
+        </table>
+        <div class="pagination-controls" id="selectTable-pagination">
+            <button class="prev-btn" disabled>&laquo; Previous</button>
+            <span class="page-num">Page 1</span>
+            <button class="next-btn" disabled>Next &raquo;</button>
+        </div>
     </section>
 
-    <table id ="selectTable">
-        <thead id="sqlColumns">
-            
-        </thead>
-        <tbody></tbody>
-    </table>
-    <div class="pagination-controls" id="selectTable-pagination">
-        <button class="prev-btn" disabled>&laquo; Previous</button>
-        <span class="page-num">Page 1</span>
-        <button class="next-btn" disabled>Next &raquo;</button>
-    </div>
+
 
 </main>
 <script src="tableContents.js" type="module"></script>
 </body>
-</html>
+</html>
