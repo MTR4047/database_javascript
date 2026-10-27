@@ -267,7 +267,7 @@ const SEARCH_USER_ACTIONS = new Map([
     [constantsSQL.srchOps.searchUsersRegistrationAfterUserID.key,        async (db, page, params) => { return await db.searchUsersRegistrationTimeAfterUserID(page, params.username) } ],
     [constantsSQL.srchOps.searchUsersRegistrationTimeSameAsUserID.key,   async (db, page, params) => { return await db.searchUsersRegistrationTimeSameAsUserID(page, params.username) } ],
     [constantsSQL.srchOps.searchNeverSignedInUsers.key,                  async (db, page) => { return await db.searchNeverSignedInUsers(page) } ],
-    [constantsSQL.srchOps.searchUsersRegisteredToday.key,                  async (db, page) => { return await db.searchUsersRegisteredToday(page) } ]
+    [constantsSQL.srchOps.searchUsersRegisteredToday.key,                async (db, page) => { return await db.searchUsersRegisteredToday(page) } ]
 ]);
 
 Object.freeze(SEARCH_USER_ACTIONS);

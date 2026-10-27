@@ -11,52 +11,6 @@ const columnLabels = Object.freeze({
     [USERS_TABLE_COLUMNS.signintime]: "Last Sign-In"
 });
 
-/** Effectively, we built a drop down menu for the search operations. It is denoted by labels found from the srchOps, which will get sent to app.js. 
- * Because of the keys, tableContents.js would know the correct fetch method as long as the label remains valid.
- * The label here are the UI friendly versions, the type correspoinds to the HTML input types.
- * The placeholder here indicates what value to show in a faded manner when the input fields are empty. *
- */
-const searchSelect = Object.freeze({
-    [srchOps.searchByUsersName.key]: {
-        label: "Search by user's first or last name",
-        actions: { [srchOps.searchByUsersName.params.name]: { label: "User's Name", placeholder: "e.g. John", type: "text" } }
-    },
-    [srchOps.searchByUsersID.key]: {
-        label: "Search by user's username",
-        actions: { [srchOps.searchByUsersID.params.username]: { label: "Username", placeholder: "e.g. johndoe", type: "text" } }
-    },
-    [srchOps.searchBetweenUsersSalary.key]: {
-        label: "Search between two salaries",
-        actions: { 
-            [srchOps.searchBetweenUsersSalary.params.minSalary]: { label: "Minimum Salary", placeholder: "0", type: "number" },
-            [srchOps.searchBetweenUsersSalary.params.maxSalary]: { label: "Maximum Salary", placeholder: "100000", type: "number" }
-        }
-    },
-    [srchOps.searchBetweenUsersAges.key]: {
-        label: "Search between two ages",
-        actions: { 
-            [srchOps.searchBetweenUsersAges.params.minAge]: { label: "Minimum Age", placeholder: "18", type: "number" },
-            [srchOps.searchBetweenUsersAges.params.maxAge]: { label: "Maximum Age", placeholder: "65", type: "number" }
-        }
-    },
-    [srchOps.searchUsersRegistrationAfterUserID.key]: {
-        label: "Search users registered after username",
-        actions: { [srchOps.searchUsersRegistrationAfterUserID.params.username]: { label: "Target Username", placeholder: "e.g. alice", type: "text" } }
-    },
-    [srchOps.searchUsersRegistrationTimeSameAsUserID.key]: {
-        label: "Search users registered at same day as username",
-        actions: { [srchOps.searchUsersRegistrationTimeSameAsUserID.params.username]: { label: "Target Username", placeholder: "e.g. bob", type: "text" } }
-    },
-    [srchOps.searchNeverSignedInUsers.key]: {
-        label: "Search users who never signed in",
-        actions: {}
-    },
-    [srchOps.searchUsersRegisteredToday.key]: {
-        label: "Search users registered today",
-        actions: {}
-    }
-});
-
 const usernm_attrib = "data-username";
 const sessionToken = sessionStorage.getItem('sessionToken'); // Session token to send to the app.js
 const userName = sessionStorage.getItem('loggedInUser'); // Username for reference
@@ -75,9 +29,6 @@ function displayUserTablesHeader()
     Object.entries(columnLabels).forEach(([colKey, label]) => {
         headerHTML += `<th sql-column="${colKey}">${label}</th>`;
     });
-
-    // TODO: Add action columns
-    // headerHTML += `<th>Delete</th><th>Edit</th></tr>`;
 
     thead.innerHTML = headerHTML;
     thead2.innerHTML = headerHTML;
@@ -261,109 +212,6 @@ document.addEventListener('DOMContentLoaded', function()
     displayUserTablesHeader();
 });
 
-// #region Search panel
-let currentSearch = null;   // { action, params } of the last search run, reused by Previous/Next
-let currentSearchPage = 1;
-
-function showSearchError(message) { document.querySelector('#search-error').textContent = message; }
-function clearSearchError() { document.querySelector('#search-error').textContent = ''; }
-
-// Fill the dropdown from searchSelect, so the labels and backend keys stay in one place
-function buildSearchDropdown()
-{
-    const select = document.querySelector('#search-type'); if (!select) return;
-    select.innerHTML = Object.entries(searchSelect)
-        .map(([key, option]) => `<option value="${key}">${option.label}</option>`).join('');
-    select.addEventListener('change', renderSearchInputs);
-    renderSearchInputs();
-}
-
-// Show the input boxes the selected search needs (none for "never signed in" and "registered today")
-function renderSearchInputs()
-{
-    clearSearchError();
-    const action = document.querySelector('#search-type').value;
-    const container = document.querySelector('#search-inputs');
-    const fields = Object.entries(searchSelect[action]?.actions ?? {});
-
-    if (fields.length === 0) { container.innerHTML = '<span class="search-hint">No inputs needed for this search.</span>'; return; }
-
-    container.innerHTML = fields.map(([param, field]) => `
-        <span class="search-field">
-            <label for="search-param-${param}">${field.label}:</label>
-            <input id="search-param-${param}" data-param="${param}" data-label="${field.label}" type="${field.type}"
-                placeholder="${field.placeholder}" ${field.type === 'number' ? 'min="0"' : ''}>
-        </span>`).join('');
-}
-
-// Read and check the inputs; throws an Error with a message for the user if something is wrong
-function readSearchParams()
-{
-    const params = {};
-    for (const input of document.querySelectorAll('#search-inputs input'))
-    {
-        const raw = input.value.trim();
-        if (raw === '') throw new Error(`Please enter ${input.dataset.label}.`);
-
-        if (input.type === 'number')
-        {
-            const num = Number(raw);
-            if (!Number.isFinite(num) || num < 0) throw new Error(`${input.dataset.label} must be a number of 0 or more.`);
-            params[input.dataset.param] = num;
-        }
-        else params[input.dataset.param] = raw;
-    }
-
-    // Range searches (salary, age): the minimum must not be above the maximum
-    const keys = Object.keys(params);
-    const minKey = keys.find(k => k.startsWith('min')); const maxKey = keys.find(k => k.startsWith('max'));
-    if (minKey && maxKey && params[minKey] > params[maxKey]) throw new Error('The minimum cannot be greater than the maximum.');
-
-    return params;
-}
-
-// Send the current search to the backend for one page and show the results in #selectTable
-async function runSearch(page)
-{
-    if (!currentSearch) return;
-    clearSearchError();
-
-    try {
-        const response = await fetch('http://localhost:5050/search/Users/actions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'user-session-token': sessionToken },
-            body: JSON.stringify({ action: currentSearch.action, page: page, params: currentSearch.params })
-        });
-        const resData = await response.json();
-
-        if (!response.ok || resData.data === false) { showSearchError(resData.error || resData.message || 'Search failed. Please try again.'); return; }
-
-        currentSearchPage = page;
-        displaySQLTable(resData, '#selectTable');
-        updatePaginationUI('#selectTable-pagination', page, resData.data.length > tableLimit);
-    }
-    catch (err) { console.error('Search failed:', err); showSearchError('Unable to connect to server.'); }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    buildSearchDropdown();
-
-    document.querySelector('#search-form')?.addEventListener('submit', (e) => {
-        e.preventDefault();
-        let params;
-        try { params = readSearchParams(); }
-        catch (err) { showSearchError(err.message); return; }
-
-        currentSearch = { action: document.querySelector('#search-type').value, params: params };
-        runSearch(1);
-    });
-
-    const pager = document.querySelector('#selectTable-pagination');
-    pager?.querySelector('.prev-btn').addEventListener('click', () => { if (currentSearchPage > 1) runSearch(currentSearchPage - 1); });
-    pager?.querySelector('.next-btn').addEventListener('click', () => runSearch(currentSearchPage + 1));
-});
-// #endregion Search panel
-
 // #region Current user table (editable)
 // Shows the signed-in user's own details (no password). The Edit button turns the editable
 // cells into input boxes; Save sends the changes to PATCH /update/Users.
@@ -489,9 +337,160 @@ async function saveCurrentUserRow()
         showProfileMessage('Profile updated.', true);
         await loadCurrentUser();            // reload My Account from the database (back to plain text)
         loadUserData(currentAllUsersPage);  // refresh the all-users table; this is lazy load, we could use some functions from unused.js
+        // Furthermore, there would be no reason to refresh the all users table if the current user does not exist there.
     }
     catch (err) { console.error('Profile update failed:', err); showProfileMessage('Unable to connect to server.'); }
 }
 
 document.addEventListener('DOMContentLoaded', () => { if (sessionToken && userName) loadCurrentUser(); });
 // #endregion Current user table (editable)
+
+// #region Search panel
+/** Effectively, we built a drop down menu for the search operations. It is denoted by labels found from the srchOps, which will get sent to app.js. 
+ * Because of the keys, tableContents.js would know the correct fetch method as long as the label remains valid.
+ * The label here are the UI friendly versions, the type correspoinds to the HTML input types.
+ * The placeholder here indicates what value to show in a faded manner when the input fields are empty. *
+ */
+const searchSelect = Object.freeze({
+    [srchOps.searchByUsersName.key]: {
+        label: "Search by user's first or last name",
+        actions: { [srchOps.searchByUsersName.params.name]: { label: "User's Name", placeholder: "e.g. John", type: "text" } }
+    },
+    [srchOps.searchByUsersID.key]: {
+        label: "Search by user's username",
+        actions: { [srchOps.searchByUsersID.params.username]: { label: "Username", placeholder: "e.g. johndoe", type: "text" } }
+    },
+    [srchOps.searchBetweenUsersSalary.key]: {
+        label: "Search between two salaries",
+        actions: { 
+            [srchOps.searchBetweenUsersSalary.params.minSalary]: { label: "Minimum Salary", placeholder: "0", type: "number" },
+            [srchOps.searchBetweenUsersSalary.params.maxSalary]: { label: "Maximum Salary", placeholder: "100000", type: "number" }
+        }
+    },
+    [srchOps.searchBetweenUsersAges.key]: {
+        label: "Search between two ages",
+        actions: { 
+            [srchOps.searchBetweenUsersAges.params.minAge]: { label: "Minimum Age", placeholder: "18", type: "number" },
+            [srchOps.searchBetweenUsersAges.params.maxAge]: { label: "Maximum Age", placeholder: "65", type: "number" }
+        }
+    },
+    [srchOps.searchUsersRegistrationAfterUserID.key]: {
+        label: "Search users registered after username",
+        actions: { [srchOps.searchUsersRegistrationAfterUserID.params.username]: { label: "Target Username", placeholder: "e.g. alice", type: "text" } }
+    },
+    [srchOps.searchUsersRegistrationTimeSameAsUserID.key]: {
+        label: "Search users registered at same day as username",
+        actions: { [srchOps.searchUsersRegistrationTimeSameAsUserID.params.username]: { label: "Target Username", placeholder: "e.g. bob", type: "text" } }
+    },
+    [srchOps.searchNeverSignedInUsers.key]: {
+        label: "Search users who never signed in",
+        actions: {}
+    },
+    [srchOps.searchUsersRegisteredToday.key]: {
+        label: "Search users registered today",
+        actions: {}
+    }
+});
+
+let currentSearch = null;   // { action, params } of the last search run, reused by Previous/Next
+let currentSearchPage = 1;
+
+function showSearchError(message) { document.querySelector('#search-error').textContent = message; }
+function clearSearchError() { document.querySelector('#search-error').textContent = ''; }
+
+// Fill the dropdown from searchSelect, so the labels and backend keys stay in one place
+function buildSearchDropdown()
+{
+    const select = document.querySelector('#search-type'); if (!select) return;
+    select.innerHTML = Object.entries(searchSelect)
+        .map(([key, option]) => `<option value="${key}">${option.label}</option>`).join('');
+    select.addEventListener('change', renderSearchInputs);
+    renderSearchInputs();
+}
+
+// Show the input boxes the selected search needs (none for "never signed in" and "registered today")
+function renderSearchInputs()
+{
+    clearSearchError();
+    const action = document.querySelector('#search-type').value;
+    const container = document.querySelector('#search-inputs');
+    const fields = Object.entries(searchSelect[action]?.actions ?? {});
+
+    if (fields.length === 0) { container.innerHTML = '<span class="search-hint">No inputs needed for this search.</span>'; return; }
+
+    container.innerHTML = fields.map(([param, field]) => `
+        <span class="search-field">
+            <label for="search-param-${param}">${field.label}:</label>
+            <input id="search-param-${param}" data-param="${param}" data-label="${field.label}" type="${field.type}"
+                placeholder="${field.placeholder}" ${field.type === 'number' ? 'min="0"' : ''}>
+        </span>`).join('');
+}
+
+// Read and check the inputs; throws an Error with a message for the user if something is wrong
+function readSearchParams()
+{
+    const params = {};
+    for (const input of document.querySelectorAll('#search-inputs input'))
+    {
+        const raw = input.value.trim();
+        if (raw === '') throw new Error(`Please enter ${input.dataset.label}.`);
+
+        if (input.type === 'number')
+        {
+            const num = Number(raw);
+            if (!Number.isFinite(num) || num < 0) throw new Error(`${input.dataset.label} must be a number of 0 or more.`);
+            params[input.dataset.param] = num;
+        }
+        else params[input.dataset.param] = raw;
+    }
+
+    // Range searches (salary, age): the minimum must not be above the maximum
+    const keys = Object.keys(params);
+    const minKey = keys.find(k => k.startsWith('min')); const maxKey = keys.find(k => k.startsWith('max'));
+    if (minKey && maxKey && params[minKey] > params[maxKey]) throw new Error('The minimum cannot be greater than the maximum.');
+
+    return params;
+}
+
+// Send the current search to the backend for one page and show the results in #selectTable
+async function runSearch(page)
+{
+    if (!currentSearch) return;
+    clearSearchError();
+
+    try {
+        const response = await fetch('http://localhost:5050/search/Users/actions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'user-session-token': sessionToken },
+            body: JSON.stringify({ action: currentSearch.action, page: page, params: currentSearch.params })
+        });
+        const resData = await response.json();
+
+        if (!response.ok || resData.data === false) { showSearchError(resData.error || resData.message || 'Search failed. Please try again.'); return; }
+
+        currentSearchPage = page;
+        displaySQLTable(resData, '#selectTable');
+        updatePaginationUI('#selectTable-pagination', page, resData.data.length > tableLimit);
+    }
+    catch (err) { console.error('Search failed:', err); showSearchError('Unable to connect to server.'); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    buildSearchDropdown();
+
+    document.querySelector('#search-form')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        let params;
+        try { params = readSearchParams(); }
+        catch (err) { showSearchError(err.message); return; }
+
+        currentSearch = { action: document.querySelector('#search-type').value, params: params };
+        runSearch(1);
+    });
+
+    const pager = document.querySelector('#selectTable-pagination');
+    pager?.querySelector('.prev-btn').addEventListener('click', () => { if (currentSearchPage > 1) runSearch(currentSearchPage - 1); });
+    pager?.querySelector('.next-btn').addEventListener('click', () => runSearch(currentSearchPage + 1));
+});
+// #endregion Search panel
+
