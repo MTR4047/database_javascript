@@ -112,7 +112,6 @@ function displaySQLTable(response, tableKey)
         const displayLabel = columnLabels[colKey] || colKey;
         headerHTML += `<th sql-column="${colKey}">${displayLabel}</th>`;
     }); 
-    // headerHTML += `<th>Actions</th>`; // Action column header
 
     // 2. Build Body HTML
     let bodyHTML = ``;
@@ -124,10 +123,6 @@ function displaySQLTable(response, tableKey)
             const value = row[colKey] !== null && row[colKey] !== undefined ? row[colKey]: '';
             bodyHTML += `<td>${value}</td>`;
         });
-
-        /* Action Buttons Cell
-        bodyHTML += `<td> <button class="delete-btn" data-username="${row[USERS_TABLE_COLUMNS.username]}">Delete</button> </td>`;
-        */
 
         bodyHTML += `</tr>`;
     });
