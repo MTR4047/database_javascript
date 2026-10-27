@@ -488,7 +488,7 @@ async function saveCurrentUserRow()
 
         showProfileMessage('Profile updated.', true);
         await loadCurrentUser();            // reload My Account from the database (back to plain text)
-        loadUserData(currentAllUsersPage);  // refresh the all-users table
+        loadUserData(currentAllUsersPage);  // refresh the all-users table; this is lazy load, we could use some functions from unused.js
     }
     catch (err) { console.error('Profile update failed:', err); showProfileMessage('Unable to connect to server.'); }
 }
