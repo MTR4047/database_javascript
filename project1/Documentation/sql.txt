@@ -1,7 +1,6 @@
-
 -- Create Database
-CREATE DATABASE IF NOT EXISTS web_app;
-USE web_app;
+CREATE DATABASE IF NOT EXISTS project1_web_app;
+USE project1_web_app;
 
 -- Create Table
 CREATE TABLE Users(
