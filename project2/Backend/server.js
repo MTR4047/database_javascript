@@ -132,7 +132,7 @@ app.get('/search/Clients/name/:name/:page', authenticateToken, (request, respons
 });
 
 /* Here, on the app.js, we have to pass something like 
-fetch('http://localhost:5050/update/Users', {
+fetch('http://localhost:5050/update/Clients', {
     method: 'PATCH',
     headers: {
         'Content-Type': 'application/json',
@@ -147,9 +147,9 @@ fetch('http://localhost:5050/update/Users', {
 .then(res => res.json())
 .then(data => console.log(data));
 */
-app.patch('/update/Users', authenticateToken, (request, response) =>
+app.patch('/update/Clients', authenticateToken, (request, response) =>
 {
-    console.log("app: Users update is called");
+    console.log("app: Clients update is called");
 
     // Neat thing we can do here because the backend function filters every invalid data call anyway 
     const { username, ...updateData } = request.body;    
