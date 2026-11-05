@@ -35,17 +35,17 @@ class DbService
 {
     // Each SRV here holds a specific compartmentalized "micro service" which handles its own table primarily
     // Cross table edits and searches are handled in this master DbService
-    #clientSRV = null;          getClientSRV() {return this.#clientSRV.getInstance(connection);}
-    #addressSRV = null;         getAddressSRV() {return this.#addressSRV.getInstance(connection);}
+    #clientSRV = null;          getClientSRV() {this.#clientSRV.updateConnection(connection); return this.#clientSRV;}
+    #addressSRV = null;         getAddressSRV() {this.#addressSRV.updateConnection(connection); return this.#addressSRV;}
 
-    #productSRV = null;         getProductSRV() {return this.#productSRV.getInstance(connection);}
-    #projectRequestSRV = null;  getProjectRequestSRV() {return this.#projectRequestSRV.getInstance(connection);}
+    #productSRV = null;         getProductSRV() {this.#productSRV.updateConnection(connection); return this.#productSRV;}
+    #projectRequestSRV = null;  getProjectRequestSRV() {this.#projectRequestSRV.updateConnection(connection); return this.#projectRequestSRV;}
 
     // #billingSRV = null;         getBillingSRV() {return this.#billingSRV;}
     // #quoteSRV = null;           getQuoteSRV() {return this.#quoteSRV;}
     // #orderSRV = null;           getOrderSRV() {return this.#orderSRV;}
-    #financialSRV = null;       getFinancialSRV() {return this.#financialSRV.getInstance(connection);}
-    #negotiationSRV = null;     getNegotiationSRV() {return this.#negotiationSRV.getInstance(connection);}
+    #financialSRV = null;       getFinancialSRV() {this.#financialSRV.updateConnection(connection); return this.#financialSRV;}
+    #negotiationSRV = null;     getNegotiationSRV() {this.#negotiationSRV.updateConnection(connection); return this.#negotiationSRV;}
 
     constructor() {
         this.connection = connection;        

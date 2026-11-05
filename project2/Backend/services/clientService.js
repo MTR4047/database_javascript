@@ -1,9 +1,9 @@
 /** Handles clients, sign ins, registers */
 class ClientService 
 {
-    #connection;
+    #connection; 
     constructor(connection) { this.#connection = connection; }
-    getInstance(connection) { this.#connection = connection; return this; }
+    updateConnection(connection) { this.#connection = connection; }
 
 }
 
