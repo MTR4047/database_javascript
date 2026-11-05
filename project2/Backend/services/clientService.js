@@ -2,7 +2,7 @@ const connection = require('../db.js');
 
 let instance = null;
 
-/** */
+/** Handles clients, sign ins, registers */
 class ClientService 
 {
     static getInstance() 

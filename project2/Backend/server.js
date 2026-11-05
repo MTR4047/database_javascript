@@ -2,21 +2,19 @@
 
 const express = require('express');
 const cors = require ('cors');
-const dotenv = require('dotenv'); dotenv.config();
 const crypto = require('crypto'); // Session tokensss
 const app = express();
 
 // Require individual services instead of one monolithic dbService
-const AddressSRV = require('./services/addressService');
 const ClientSRV = require('./services/clientService');
+const AddressSRV = require('./services/addressService');
 
-const productSRV = require('./services/productService');
-const projectRequestSRV = require('./services/projectRequestService');
+const ProductSRV = require('./services/productService');
+const ProjectRequestSRV = require('./services/projectRequestService');
 
 const BillingSRV = require('./services/billingService');
 const QuoteSRV = require('./services/quoteService');
 const OrderSRV = require('./services/orderService');
-
 const NegotiationSRV = require('./services/negotiationService.js');
 
 app.use(cors());
@@ -25,6 +23,7 @@ app.use(express.urlencoded({extended: false}));
 
 // #region Authentication
 const activeUserSessions = new Map();
+
 // Helper to validate incoming tokens on protected endpoints
 function authenticateToken(request, response, next) 
 {
@@ -39,56 +38,58 @@ function authenticateToken(request, response, next)
     next();
 }
 
-// #region USERS TABLE
-app.post('/insert/Users', (request, response) => {
+app.post('/update/Clients/signIn', (request, response) => {
     const { username, password } = request.body;
-    const db = connection.getDbServiceInstance();
-
-    db.insertNewUser(username, password)
-        .then(userData => {
-            if (userData) 
-            {
-                const token = crypto.randomUUID();
-                activeUserSessions.set(token, userData.username); // Associate a username with a token
-                response.json({ success: true, data: userData, token: token });
-            } 
-            else { response.status(400).json({ success: false, error: 'Registration failed or user already exists.' }); }
-        })
-        .catch(err => {
-            console.error(err);
-            response.status(500).json({ success: false, error: 'Server error during registration.' });
-        });
-});
-
-app.post('/update/Users/signIn', (request, response) => {
-    const { username, password } = request.body;
-    const db = connection.getDbServiceInstance();
+    const db = ClientSRV.getInstance();
     const result = db.signInUser(username, password);
 
     result.then(userData => {
-            if (userData) 
-            {
-                const token = crypto.randomUUID();
-                activeUserSessions.set(token, userData.username); // Associate a username with a token
-                response.json({ success: true, data: userData, token: token }); 
-            } 
-            else { response.status(401).json({ success: false, error: 'Invalid username or password.' }); }
-        })
-        .catch(err => {
-            console.error(err);
-            response.status(500).json({ success: false, error: 'Server error during sign in.' });
-        });
+        if (userData) 
+        {
+            let token = crypto.randomUUID();
+            while (activeUserSessions.has(token)) { token = crypto.randomUUID(); }
+            activeUserSessions.set(token, userData.username); // Associate a username with a token
+            response.json({ success: true, data: userData, token: token }); 
+        } 
+        else { response.status(401).json({ success: false, error: 'Invalid username or password.' }); }
+    })
+    .catch(err => {
+        console.error(err);
+        response.status(500).json({ success: false, error: 'Server error during sign in.' });
+    });
 });
 
-app.post('/update/Users/signOut', authenticateToken, (request, response) => {
+app.post('/update/Clients/signOut', authenticateToken, (request, response) => {
     const token = request.headers['user-session-token'];
     
-    if (token) {
-        activeUserSessions.delete(token);
-    }
+    if (token) { activeUserSessions.delete(token); }
     
     response.json({ success: true, message: 'Signed out successfully.' });
 });
+
+// #endregion Authentication
+
+// #region CLIENTS TABLE
+app.post('/insert/Users', (request, response) => {
+    const { username, password } = request.body;
+    const db = ClientSRV.getInstance();
+
+    db.insertNewUser(username, password).then(userData => {
+        if (userData) 
+        {
+            let token = crypto.randomUUID();
+            while (activeUserSessions.has(token)) { token = crypto.randomUUID(); }
+            activeUserSessions.set(token, userData.username); // Associate a username with a token
+            response.json({ success: true, data: userData, token: token });
+        } 
+        else { response.status(400).json({ success: false, error: 'Registration failed or user already exists.' }); }
+    })
+    .catch(err => {
+        console.error(err);
+        response.status(500).json({ success: false, error: 'Server error during registration.' });
+    });
+});
+
 
 /* Here, on the app.js, we have to pass something like fetch(http://localhost:5050/delete/Users/${username}),  
 { method: 'DELETE', headers: { 'user-session-token': sessionToken }, body: JSON.stringify({username: username}) }).then
@@ -102,17 +103,17 @@ app.delete('/delete/Users', authenticateToken, (request, response) =>
     { return response.status(403).json({ success: false, error: 'User must be authenticated and can only delete their own records.' }); }
 
     const token = request.headers['user-session-token'];
-    const db = connection.getDbServiceInstance();    
+    const db = ClientSRV.getInstance(); 
     const result = db.deleteRowByUsername(username);
     result.then(data => {
-            // Remove active token from server memory map; Return success payload to client
-            if (token) { activeUserSessions.delete(token); }            
-            response.json({ success: true });
-        })
-        .catch(err => {
-            console.error('Database deletion error:', err);
-            response.status(500).json({ success: false, error: 'Database deletion failed.' });
-        });
+        // Remove active token from server memory map; Return success payload to client
+        if (token) { activeUserSessions.delete(token); }            
+        response.json({ success: true });
+    })
+    .catch(err => {
+        console.error('Database deletion error:', err);
+        response.status(500).json({ success: false, error: 'Database deletion failed.' });
+    });
 });
 
 /*
@@ -386,18 +387,9 @@ app.get('/search/Users/searchUsersRegisteredToday', (request, response) =>
 // #endregion USERS TABLE
 
 // set up the web server listener
-// if we use .env to configure
-/*
+const dotenv = require('dotenv'); dotenv.config();
 app.listen(process.env.PORT, 
     () => {
         console.log("I am listening on the configured port " + process.env.PORT)
-    }
-);
-*/
-
-// if we configure here directly
-app.listen(5050, 
-    () => {
-        console.log("I am listening on the fixed port 5050.")
     }
 );
