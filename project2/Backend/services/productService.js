@@ -1,7 +1,9 @@
 /** */
 class ProductService 
 {
-    constructor(connection) { this.connection = connection; }
+    #connection;
+    constructor(connection) { this.#connection = connection; }
+    getInstance(connection) { this.#connection = connection; return this; }
 
     
 }

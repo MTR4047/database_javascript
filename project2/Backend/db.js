@@ -23,9 +23,11 @@ const AddressSRV = require('./services/addressService');
 const ProductSRV = require('./services/productService');
 const ProjectRequestSRV = require('./services/projectRequestService');
 
-const BillingSRV = require('./services/billingService');
-const QuoteSRV = require('./services/quoteService');
-const OrderSRV = require('./services/orderService');
+// const BillingSRV = require('./services/billingService');
+// const QuoteSRV = require('./services/quoteService');
+// const OrderSRV = require('./services/orderService');
+const FinancialSRV = require('./services/financialService');
+
 const NegotiationSRV = require('./services/negotiationService.js');
 
 let instance = null;
@@ -33,16 +35,17 @@ class DbService
 {
     // Each SRV here holds a specific compartmentalized "micro service" which handles its own table primarily
     // Cross table edits and searches are handled in this master DbService
-    #clientSRV = null;          getClientSRV() {return this.#clientSRV;}
-    #addressSRV = null;         getAddressSRV() {return this.#addressSRV;}
+    #clientSRV = null;          getClientSRV() {return this.#clientSRV.getInstance(connection);}
+    #addressSRV = null;         getAddressSRV() {return this.#addressSRV.getInstance(connection);}
 
-    #productSRV = null;         getProductSRV() {return this.#productSRV;}
-    #projectRequestSRV = null;  getProjectRequestSRV() {return this.#projectRequestSRV;}
+    #productSRV = null;         getProductSRV() {return this.#productSRV.getInstance(connection);}
+    #projectRequestSRV = null;  getProjectRequestSRV() {return this.#projectRequestSRV.getInstance(connection);}
 
-    #billingSRV = null;         getBillingSRV() {return this.#billingSRV;}
-    #quoteSRV = null;           getQuoteSRV() {return this.#quoteSRV;}
-    #orderSRV = null;           getOrderSRV() {return this.#orderSRV;}
-    #negotiationSRV = null;     getNegotiationSRV() {return this.#negotiationSRV;}
+    // #billingSRV = null;         getBillingSRV() {return this.#billingSRV;}
+    // #quoteSRV = null;           getQuoteSRV() {return this.#quoteSRV;}
+    // #orderSRV = null;           getOrderSRV() {return this.#orderSRV;}
+    #financialSRV = null;       getFinancialSRV() {return this.#financialSRV.getInstance(connection);}
+    #negotiationSRV = null;     getNegotiationSRV() {return this.#negotiationSRV.getInstance(connection);}
 
     constructor() {
         this.connection = connection;        
@@ -53,9 +56,10 @@ class DbService
         this.#productSRV = new ProductSRV(connection);
         this.#projectRequestSRV = new ProjectRequestSRV(connection);
 
-        this.#billingSRV = new BillingSRV(connection);
-        this.#quoteSRV = new QuoteSRV(connection);
-        this.#orderSRV = new OrderSRV(connection);
+        // this.#billingSRV = new BillingSRV(connection);
+        // this.#quoteSRV = new QuoteSRV(connection);
+        // this.#orderSRV = new OrderSRV(connection);
+        this.#financialSRV = new FinancialSRV(connection);
         this.#negotiationSRV = new NegotiationSRV(connection);
     }
 
