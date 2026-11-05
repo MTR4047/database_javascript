@@ -21,7 +21,7 @@ app.use(cors());
 app.use(express.json())
 app.use(express.urlencoded({extended: false}));
 
-// #region Authentication
+// #region Authentication & Client Management
 const activeUserSessions = new Map();
 
 // Helper to validate incoming tokens on protected endpoints
@@ -67,10 +67,7 @@ app.post('/update/Clients/signOut', authenticateToken, (request, response) => {
     response.json({ success: true, message: 'Signed out successfully.' });
 });
 
-// #endregion Authentication
-
-// #region CLIENTS TABLE
-app.post('/insert/Users', (request, response) => {
+app.post('/insert/Clients', (request, response) => {
     const { username, password } = request.body;
     const db = ClientSRV.getInstance();
 
@@ -94,7 +91,7 @@ app.post('/insert/Users', (request, response) => {
 /* Here, on the app.js, we have to pass something like fetch(http://localhost:5050/delete/Users/${username}),  
 { method: 'DELETE', headers: { 'user-session-token': sessionToken }, body: JSON.stringify({username: username}) }).then
 */
-app.delete('/delete/Users', authenticateToken, (request, response) => 
+app.delete('/delete/Clients', authenticateToken, (request, response) => 
 {
     const { username } = request.body; console.log("delete " + username);   
     
@@ -116,47 +113,12 @@ app.delete('/delete/Users', authenticateToken, (request, response) =>
     });
 });
 
-/*
-app.post('/insert/Users', (request, response) => {
-    console.log("app: register a user.");
-    const { username, password } = request.body;
-    const db = dbService.getDbServiceInstance();
-    const result = db.insertNewUser(username, password);
- 
-    result.then(data => response.json({data: data})) // return the newly added row to frontend
-   // .then(data => console.log({data: data})) // debug first before return by response
-   .catch(err => console.log(err));
-});
+// #endregion Authentication
 
-// Considered an update as signing in updates the sign in time
-app.post('/update/Users/signin', (request, response) => {
-    const { username, password } = request.body;
-    const db = dbService.getDbServiceInstance();
-    const result = db.signInUser(username, password);
-
-    result.then(data => response.json({success: true, data: data}))
-    .catch(err => {
-        console.log(err);
-
-    });
-});
-*/
-
-// No authentication for session required heres
-app.get('/getAll/Users/:page', (request, response) => {    
-    const db = connection.getDbServiceInstance();
-    
-    // For example: const res = await fetch(`/getAll/Users/${currentPage}?offset=25?sortBy=username`);
-    const { page } = request.params;
-    const { offset, order } = request.query; // Everything following the pages with '?';    
-    const offsetNorm = isNaN(offset) ? 100: Math.min(offset, 100); // Here, we must pass in valid data
-    const result = db.getAllUsersData(page, offsetNorm, order); // call a DB function
-
-    result.then(data => response.json({data: data})).catch(err => console.log(err));
-});
+// #region CLIENTS TABLE
 
 // Here, because we have a special case of "all" where we have to call another function, we both map this and have an endpoint
-app.get('/search/Users/name/:name/:page', authenticateToken, (request, response) => 
+app.get('/search/Clients/name/:name/:page', authenticateToken, (request, response) => 
 {
     const {name} = request.params; console.log(name);
     const page = parseInt(request.params.page, 10) || 1;
@@ -319,69 +281,6 @@ app.post('/search/Users/actions', authenticateToken, async (request, response) =
     }
 });
 
-/*
-app.get('/search/Users/username/:username', (request, response) => 
-{
-    const {username} = request.params; console.log(username);
-
-    const db = dbService.getDbServiceInstance();    
-    const result = db.searchByUsersID(username);
-
-    result.then(data => response.json({data: data})).catch(err => console.log(err));
-});
-
-app.get('/search/Users/searchBetweenUsersSalary', (request, response) => 
-{
-    const {salary1, salary2} = request.body; 
-    let result;
-
-    const db = dbService.getDbServiceInstance();    
-    result = db.searchBetweenUsersSalary(salary1, salary2);
-
-    result.then(data => response.json({data: data})).catch(err => console.log(err));
-});
-
-app.get('/search/Users/searchBetweenUsersAges', (request, response) => 
-{
-    const {age1, age2} = request.body; 
-    let result;
-
-    const db = dbService.getDbServiceInstance();    
-    result = db.searchBetweenUsersAges(age1, age2);
-
-    result.then(data => response.json({data: data})).catch(err => console.log(err));
-});
-
-app.get('/search/Users/searchUsersRegistrationAfterUserID/:userId', (request, response) => 
-{
-    const {userId} = request.params; 
-    let result;
-
-    const db = dbService.getDbServiceInstance();    
-    result = db.searchUsersRegistrationAfterUserID(userId);
-
-    result.then(data => response.json({data: data})).catch(err => console.log(err));
-});
-
-app.get('/search/Users/searchUsersRegistrationSameAsUserID/:userId', (request, response) => 
-{
-    const {age1, age2} = request.body; 
-    let result;
-
-    const db = dbService.getDbServiceInstance();    
-    result = db.searchBetweenUsersAges(age1, age2);
-
-    result.then(data => response.json({data: data})).catch(err => console.log(err));
-});
-
-app.get('/search/Users/searchUsersRegisteredToday', (request, response) => 
-{
-    const db = dbService.getDbServiceInstance();    
-    const result = db.searchUsersRegisteredToday();
-
-    result.then(data => response.json({data: data})).catch(err => console.log(err));
-});
-*/
 // #endregion
 
 // #endregion USERS TABLE
