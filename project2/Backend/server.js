@@ -5,17 +5,8 @@ const cors = require ('cors');
 const crypto = require('crypto'); // Session tokensss
 const app = express();
 
-// Require individual services instead of one monolithic dbService
-const ClientSRV = require('./services/clientService');
-const AddressSRV = require('./services/addressService');
-
-const ProductSRV = require('./services/productService');
-const ProjectRequestSRV = require('./services/projectRequestService');
-
-const BillingSRV = require('./services/billingService');
-const QuoteSRV = require('./services/quoteService');
-const OrderSRV = require('./services/orderService');
-const NegotiationSRV = require('./services/negotiationService.js');
+// Monolithic DBService that hosts compartmentalized services
+const dbService = require('./db.js');
 
 app.use(cors());
 app.use(express.json())
@@ -40,7 +31,7 @@ function authenticateToken(request, response, next)
 
 app.post('/update/Clients/signIn', (request, response) => {
     const { username, password } = request.body;
-    const db = ClientSRV.getInstance();
+    const db = dbService.getInstance().getClientSRV(); // Note that this function primarily deals with the Clients table
     const result = db.signInUser(username, password);
 
     result.then(userData => {
@@ -69,7 +60,7 @@ app.post('/update/Clients/signOut', authenticateToken, (request, response) => {
 
 app.post('/insert/Clients', (request, response) => {
     const { username, password } = request.body;
-    const db = ClientSRV.getInstance();
+    const db = dbService.getInstance().getClientSRV(); 
 
     db.insertNewUser(username, password).then(userData => {
         if (userData) 
@@ -100,8 +91,9 @@ app.delete('/delete/Clients', authenticateToken, (request, response) =>
     { return response.status(403).json({ success: false, error: 'User must be authenticated and can only delete their own records.' }); }
 
     const token = request.headers['user-session-token'];
-    const db = ClientSRV.getInstance(); 
+    const db = dbService.getInstance().getClientSRV();
     const result = db.deleteRowByUsername(username);
+    
     result.then(data => {
         // Remove active token from server memory map; Return success payload to client
         if (token) { activeUserSessions.delete(token); }            
@@ -124,7 +116,7 @@ app.get('/search/Clients/name/:name/:page', authenticateToken, (request, respons
     const page = parseInt(request.params.page, 10) || 1;
     let result;
 
-    const db = connection.getDbServiceInstance();
+    const db = dbService.getInstance().getClientSRV();
     if(name.toLowerCase() === "all") result = db.getAllUsersData(page, 100);
     else result =  db.searchByUsersName(page, name); // call a DB function
 
@@ -159,7 +151,7 @@ app.patch('/update/Clients', authenticateToken, (request, response) =>
     if (username !== authUser) 
     { return response.status(403).json({ success: false, error: 'User must be authenticated and can only update their own records.' }); }
 
-    const db = connection.getDbServiceInstance();
+    const db = dbService.getInstance().getClientSRV();
     const result = db.updateDetailsByUsername(updateData, username);
 
     result.then(data => {
@@ -286,7 +278,8 @@ app.post('/search/Users/actions', authenticateToken, async (request, response) =
 // #endregion USERS TABLE
 
 // set up the web server listener
-const dotenv = require('dotenv'); dotenv.config();
+const dotenv = require('dotenv');const MasterDbService = require('./db.js');
+ dotenv.config();
 app.listen(process.env.PORT, 
     () => {
         console.log("I am listening on the configured port " + process.env.PORT)

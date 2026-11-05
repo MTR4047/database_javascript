@@ -1,15 +1,9 @@
-const connection = require('../db.js');
-
-let instance = null;
-
 /** */
 class AddressService 
 {
-    static getInstance() 
-    {
-        if (!instance) instance = new AddressService();
-        return instance;
-    }
+    constructor(connection) { this.connection = connection; }
+
+    
 }
 
 module.exports = AddressService;

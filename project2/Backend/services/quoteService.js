@@ -1,15 +1,9 @@
-const connection = require('../db.js');
-
-let instance = null;
-
 /** */
 class QuoteService 
 {
-    static getInstance() 
-    {
-        if (!instance) instance = new QuoteService();
-        return instance;
-    }
+    constructor(connection) { this.connection = connection; }
+
+    
 }
 
 module.exports = QuoteService;
