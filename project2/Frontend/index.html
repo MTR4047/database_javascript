@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="stylesheets.css">
+    <title>Login - DSE 6100 Project 2</title>
+</head>
+<body>
+    <h1>Anna's Flooring & Installation</h1>
+    
+    <form id="user-sign-in"> <h2>Sign In</h2>
+        <label for="username-input">Username:</label> 
+        <input type="text" id="username-input" 
+            pattern="[^'&quot;?!=\\`\\;&lt;&gt;]+" title="Characters ' &quot; ? ! = ` \ ; < > are not allowed."
+            required >
+        <br>        
+        
+        <label for="password-input">Password:</label> 
+        <input type="password" id="password-input"  minlength="8"
+            pattern="[^'&quot;?!=\\`\\;&lt;&gt;]+" title="Characters ' &quot; ? ! = ` \ ; < > are not allowed."
+            required>
+        <br>
+        
+        <p id="error-message" style="color: red; margin-top: 10px; font-size: 0.9rem; text-align: center;"></p>
+
+        <div class="actions">
+            <button type="submit" id="sign-in-button">Sign In</button>
+            <button type="button" id="register-button">Register</button>
+        </div>
+    </form>
+
+    <script src="index.js" type="module"></script>
+</body>
+</html>
