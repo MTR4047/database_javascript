@@ -3,8 +3,42 @@ const registerBtn = document.querySelector('#register-button');
 const errorMsg = document.querySelector('#error-message');
 
 function clearError() { if (errorMsg) errorMsg.textContent = ''; }
-
 function showError(msg) { if (errorMsg) errorMsg.textContent = msg; }
+
+// --- SESSION GUARD FOR BACK BUTTON NAVIGATION ---
+async function checkExistingSession() {
+    const token = sessionStorage.getItem('sessionToken'); const user = sessionStorage.getItem('loggedInUser');
+
+    // If session data exists, the user is trying to access index.html while logged in
+    if (token || user) {
+        const confirmLogout = window.confirm("You are currently logged in. Going back to the login page will log you out. Do you want to proceed?");
+
+        // User confirmed: Clear session storage and notify backend
+        if (confirmLogout) {            
+            sessionStorage.removeItem('sessionToken'); sessionStorage.removeItem('loggedInUser');
+
+            if (token) {
+                try {
+                    await fetch('http://localhost:5050/update/Clients/signOut', {
+                        method: 'POST',
+                        headers: { 'user-session-token': token }
+                    });
+                } catch (err) {
+                    console.error('Backend sign-out notification error:', err);
+                }
+            }
+        } else {
+            // User disagreed: Disallow going back by redirecting them forward again
+            window.location.href = 'tableContents.html';
+        }
+    }
+}
+
+// Run check on initial page load
+window.addEventListener('DOMContentLoaded', checkExistingSession);
+
+// Run check on pageshow event (handles browser Back/Forward cache in modern browsers)
+window.addEventListener('pageshow', (event) => { if (event.persisted) { checkExistingSession(); }} );
 
 // Sign In via form submit event (triggers native pattern checks)
 loginForm.onsubmit = async function(e) 
