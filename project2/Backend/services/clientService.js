@@ -1,4 +1,4 @@
-/** Handles clients, sign ins, registers */
+/** Handles clients, sign ins, registers as well as address services */
 class ClientService 
 {
     #connection; 
