@@ -1,5 +1,5 @@
-const mysql = require('mysql');
-const dotenv = require('dotenv');
+import mysql from 'mysql';
+import dotenv from 'dotenv';
 dotenv.config();
 
 // 1. Establish the MySQL connection right at the top
@@ -17,48 +17,33 @@ connection.connect((err) => {
 });
 
 // 2. Import modular domain sub-services
-const ClientSRV = require('./services/clientService');
-const AddressSRV = require('./services/addressService');
-
-const ProductSRV = require('./services/productService');
-const ProjectRequestSRV = require('./services/projectRequestService');
-
-// const BillingSRV = require('./services/billingService');
-// const QuoteSRV = require('./services/quoteService');
-// const OrderSRV = require('./services/orderService');
-const FinancialSRV = require('./services/financialService');
-
-const NegotiationSRV = require('./services/negotiationService.js');
+import ClientSRV from './services/clientService';
+import ProductSRV from './services/productService';
+import ProjectRequestSRV from './services/projectRequestService';
+import FinancialSRV from './services/financialService';
+import NegotiationSRV from './services/negotiationService.js';
 
 let instance = null;
 class DbService 
 {
     // Each SRV here holds a specific compartmentalized "micro service" which handles its own table primarily
     // Cross table edits and searches are handled in this master DbService
-    #clientSRV = null;          getClientSRV() {this.#clientSRV.updateConnection(connection); return this.#clientSRV;}
-    #addressSRV = null;         getAddressSRV() {this.#addressSRV.updateConnection(connection); return this.#addressSRV;}
+    /** @type {ClientSRV} */            #clientSRV = null;          getClientSRV() {this.#clientSRV.updateConnection(connection); return this.#clientSRV;}
 
-    #productSRV = null;         getProductSRV() {this.#productSRV.updateConnection(connection); return this.#productSRV;}
-    #projectRequestSRV = null;  getProjectRequestSRV() {this.#projectRequestSRV.updateConnection(connection); return this.#projectRequestSRV;}
+    /** @type {ProductSRV} */           #productSRV = null;         getProductSRV() {this.#productSRV.updateConnection(connection); return this.#productSRV;}
+    /** @type {ProjectRequestSRV} */    #projectRequestSRV = null;  getProjectRequestSRV() {this.#projectRequestSRV.updateConnection(connection); return this.#projectRequestSRV;}
 
-    // #billingSRV = null;         getBillingSRV() {return this.#billingSRV;}
-    // #quoteSRV = null;           getQuoteSRV() {return this.#quoteSRV;}
-    // #orderSRV = null;           getOrderSRV() {return this.#orderSRV;}
-    #financialSRV = null;       getFinancialSRV() {this.#financialSRV.updateConnection(connection); return this.#financialSRV;}
-    #negotiationSRV = null;     getNegotiationSRV() {this.#negotiationSRV.updateConnection(connection); return this.#negotiationSRV;}
+    /** @type {FinancialSRV} */         #financialSRV = null;       getFinancialSRV() {this.#financialSRV.updateConnection(connection); return this.#financialSRV;}
+    /** @type {NegotiationSRV} */       #negotiationSRV = null;     getNegotiationSRV() {this.#negotiationSRV.updateConnection(connection); return this.#negotiationSRV;}
 
     constructor() {
-        this.connection = connection;        
-        // Pass the shared connection down to each micro-service instance
+        this.connection = connection; // Pass the shared connection down to each micro-service instance       
+        
         this.#clientSRV = new ClientSRV(connection);
-        this.#addressSRV = new AddressSRV(connection);
 
         this.#productSRV = new ProductSRV(connection);
         this.#projectRequestSRV = new ProjectRequestSRV(connection);
 
-        // this.#billingSRV = new BillingSRV(connection);
-        // this.#quoteSRV = new QuoteSRV(connection);
-        // this.#orderSRV = new OrderSRV(connection);
         this.#financialSRV = new FinancialSRV(connection);
         this.#negotiationSRV = new NegotiationSRV(connection);
     }
@@ -74,4 +59,14 @@ class DbService
 }
 
 
-module.exports = DbService;
+// Default export containing the singleton factory and connection
+export default {
+    /** @returns {DbService} */
+    getInstance: (conn = connection) => {
+        if (!instance) instance = new MasterDbService(conn);
+        return instance;
+    },
+    connection
+};
+
+// module.exports = DbService;

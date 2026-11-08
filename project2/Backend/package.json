@@ -18,5 +18,5 @@
     "nodemon": "^3.1.14"
   },
   "devDependencies": {},
-  "type": "commonjs"
+  "type": "module"
 }

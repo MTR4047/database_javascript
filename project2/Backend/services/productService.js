@@ -1,11 +1,19 @@
 /** */
-class ProductService 
+export default class ProductService 
 {
     #connection;
     constructor(connection) { this.#connection = connection; }
     getInstance(connection) { this.#connection = connection; return this; }
 
-    
-}
+    // #region Flooring Products table
 
-module.exports = ProductService;
+    // #endregion
+
+    // #region Flooring Category table
+
+    // #endregion
+
+    // #region Pattern table
+
+    // #endregion
+}

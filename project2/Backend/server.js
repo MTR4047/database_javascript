@@ -2,11 +2,14 @@
 
 const express = require('express');
 const cors = require ('cors');
-const crypto = require('crypto'); // Session tokensss
+const crypto = require('crypto'); 
 const app = express();
 
-// Monolithic DBService that hosts compartmentalized services
-const dbService = require('./db.js');
+import express from 'express';
+import cors from 'cors';
+import crypto from 'crypto'; // Session tokensss
+import dotenv from 'dotenv';
+import dbService from './db.js'; // Monolithic DBService that hosts compartmentalized services
 
 app.use(cors());
 app.use(express.json())
@@ -259,7 +262,7 @@ app.post('/search/Users/actions', authenticateToken, async (request, response) =
 
     try 
     {
-        const db = connection.getDbServiceInstance();
+        const db = dbService.getInstance();
         const data = await searchFunc(db, page, params); 
         return response.json({ data: data });
     } 
@@ -278,8 +281,7 @@ app.post('/search/Users/actions', authenticateToken, async (request, response) =
 // #endregion USERS TABLE
 
 // set up the web server listener
-const dotenv = require('dotenv');const MasterDbService = require('./db.js');
- dotenv.config();
+dotenv.config();
 app.listen(process.env.PORT, 
     () => {
         console.log("I am listening on the configured port " + process.env.PORT)

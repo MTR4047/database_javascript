@@ -1,10 +1,17 @@
 /** Handles clients, sign ins, registers as well as address services */
-class ClientService 
+export default class ClientService 
 {
     #connection; 
     constructor(connection) { this.#connection = connection; }
     updateConnection(connection) { this.#connection = connection; }
 
-}
+    // #region CLIENT TABLE
 
-module.exports = ClientService;
+
+    // #endregion
+
+    // #region ADDRESS TABLE
+
+
+    // #endregion
+}
