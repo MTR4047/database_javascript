@@ -17,16 +17,16 @@ async function checkExistingSession() {
         if (confirmLogout) {            
             sessionStorage.removeItem('sessionToken'); sessionStorage.removeItem('loggedInUser');
 
-            if (token) {
+            if (token) {                
                 try {
-                    await fetch('http://localhost:5050/update/Clients/signOut', {
+                    const response = await fetch('http://localhost:5050/update/Clients/signOut', {
                         method: 'POST',
-                        headers: { 'user-session-token': token }
+                        headers: { 'Content-Type': 'application/json', 'user-session-token': token },
+                        body: JSON.stringify({ username: user })
                     });
-                } catch (err) {
-                    console.error('Backend sign-out notification error:', err);
-                }
-            }
+                } 
+                catch (err) { console.error('Backend sign-out notification error:', err);                }
+            } 
         } else {
             // User disagreed: Disallow going back by redirecting them forward again
             window.location.href = 'tableContents.html';
