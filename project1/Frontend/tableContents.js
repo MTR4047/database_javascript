@@ -138,8 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 // Clear active session from client storage
-                if (response.ok) {
-                    
+                if (response.ok) {                    
                     sessionStorage.clear();
                     window.location.href = 'index.html';
                 }
