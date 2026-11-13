@@ -20,3 +20,7 @@ As for the **Address** table, we assume that all addresses served would be in th
 
 As for **Flooring Requests**, we assume that each **room** has at maximum one flooring product associated with it. Otherwise, we would have a ProjectAreaProducts table in which there would be a primary key for the projectAreaProductID, and two foreign keys for flooringProjectArea and flooringProductID respectively (which would no longer exist in the Room table anymore), with an allocatedSquareFootage attribute for that specific product in that area (which would need to have a constraint that the combination of the square footage of all products in the area must not be greater than the total square footage of the flooring project area).
 
+
+
+**Bill Items** is more customizable (in terms of handling custom charges and such) than **Quote Items**, we make the assumption that the quote ought to be more rigid in nature as it deals with FlooringProducts directly. Otherwise, we could have another table called CustomLineItems which would have two foreign nullable keys (QuoteID or BillingID), alongside a chargeType, description, quantity (where applicable), unitPrice and totalPrice values.
+
