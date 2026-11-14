@@ -1,22 +1,117 @@
 // Backend: application services, accessible by URIs
 
-const express = require('express');
-const cors = require ('cors');
-const crypto = require('crypto'); 
-const app = express();
-
 import express from 'express';
 import cors from 'cors';
 import crypto from 'crypto'; // Session tokensss
 import dotenv from 'dotenv';
 import dbService from './db.js'; // Monolithic DBService that hosts compartmentalized services
 
+dotenv.config();
+const app = express();
 app.use(cors());
 app.use(express.json())
 app.use(express.urlencoded({extended: false}));
 
 // #region Authentication & Client Management
 const activeUserSessions = new Map();
+const SESSION_TIMEOUT_MS = 10.5 * 60 * 1000; // 10.5 minutes in milliseconds
+const UPDATE_THRESHOLD_MS = 2 * 60 * 1000; // Update when necessary, 2 minute update threshold
+
+// #region CLEANUP
+
+/* // Inefficient, O(N)
+setInterval(() => {
+    const now = Date.now();
+    for (const [token, session] of activeUserSessions.entries()) // Parse through the active sessions to see 
+    {
+        if (now - session.lastActive > SESSION_TIMEOUT_MS) 
+        { activeUserSessions.delete(token); }
+    }
+}, 120 * 1000); // Run every two minutes, if session has been inactive for longer than 10.5 minutes, PERISH IT
+*/
+
+class SessionMinHeap {
+    constructor() { this.heap = []; }
+
+    push(token, expiresAt) {
+        this.heap.push({ token, expiresAt });
+        this._upheap(this.heap.length - 1);
+    }
+
+    pop() {
+        if (this.heap.length === 0) return null;
+        if (this.heap.length === 1) return this.heap.pop();
+        const top = this.heap[0];
+        this.heap[0] = this.heap.pop();
+        this._downheap(0);
+        return top;
+    }
+
+    peek() { return this.heap.length > 0 ? this.heap[0] : null; }
+
+    _upheap(i) {
+        while (i > 0) {
+            const p = Math.floor((i - 1) / 2);
+            if (this.heap[i].expiresAt >= this.heap[p].expiresAt) break;
+            [this.heap[i], this.heap[p]] = [this.heap[p], this.heap[i]];
+            i = p;
+        }
+    }
+
+    _downheap(i) {
+        const last = this.heap.length - 1;
+        while ((i * 2 + 1) <= last) {
+            let left = i * 2 + 1;
+            let right = left + 1;
+            let smallest = i;
+
+            if (this.heap[left].expiresAt < this.heap[smallest].expiresAt) smallest = left;
+            if (right <= last && this.heap[right].expiresAt < this.heap[smallest].expiresAt) smallest = right;
+
+            if (smallest === i) break;
+            [this.heap[i], this.heap[smallest]] = [this.heap[smallest], this.heap[i]];
+            i = smallest;
+        }
+    }
+}
+
+const sessionHeap = new SessionMinHeap();
+
+// Background Sweeper with Lazy Deletion Validation
+setInterval(() => {
+    const now = Date.now();
+
+    // Pop off entries that have been expired, then validate to see if the user map session 
+    // Note that, the oldest entries are at the top! We will have a maximum of current_users * ( MAXIMUM_TIMEOUT_TIME / UPDATE_THRESHOLD_TIME ) in this structure
+    while (sessionHeap.peek() && sessionHeap.peek().expiresAt <= now) 
+    {
+        const expiredEntry = sessionHeap.pop();
+        const session = activeUserSessions.get(expiredEntry.token);
+
+        // If the session exists
+        if (session) 
+        {
+            const currentExpiresAt = session.lastActive + SESSION_TIMEOUT_MS;
+            
+            // Lazy deletion match check: Does the heap entry match the user's actual current expiration?
+            if (currentExpiresAt === expiredEntry.expiresAt) // Double check it's truly past the timeout window
+            {
+                if (now - session.lastActive > SESSION_TIMEOUT_MS) activeUserSessions.delete(expiredEntry.token);
+            }
+            // If currentExpiresAt is greater, the user refreshed their session, so this old heap entry is safely ignored and discarded!
+        }
+    }
+}, 120 * 1000);
+
+// #endregion CLEANUP
+
+// Helper to register a session
+function registerSession(token, username, sessionDate = Date.now()) 
+{
+    activeUserSessions.set(token, { username: username, lastActive: sessionDate, lastUpdated: sessionDate });
+    // Push the calculated expiration to the heap
+    sessionHeap.push(token, sessionDate + SESSION_TIMEOUT_MS);
+}
 
 // Helper to validate incoming tokens on protected endpoints
 function authenticateToken(request, response, next) 
@@ -27,10 +122,44 @@ function authenticateToken(request, response, next)
         return response.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
     }
 
+    const session = activeUserSessions.get(token);
+    const now = Date.now();
+
+    if (now - session.lastActive > SESSION_TIMEOUT_MS) {
+        activeUserSessions.delete(token);
+        return response.status(401).json({ success: false, error: 'Session expired due to inactivity. Please sign in again.' });
+    }
+
+    // Throttled Sliding Window: Only update the expiration time if it's been longer than the threshold
+    // We have to note that lastActive would not be fully accurate as long as there is a update threshold MS
+    if (now - session.lastUpdated > UPDATE_THRESHOLD_MS) {
+        session.lastActive = now;
+        session.lastUpdated = now; // Track when we last bumped the expiration
+
+        sessionHeap.push(token, session.lastActive);
+    }
+
     // Note that, if we have authenticate token as "parameter" on the endpoint, it becomes a middleware function!!
     request.username = activeUserSessions.get(token); // Attach username to request object that gets passed into the endpoint
     next();
 }
+
+// Ping endpoint for the frontend heartbeat
+app.post('/api/session/ping', authenticateToken, (request, response) => {
+    // authenticateToken middleware automatically updates `lastActive` if valid and within update threshold period
+    response.json({ success: true, message: 'Session revived.' });
+});
+
+// If the request reaches this point, authenticateToken has already passed, meaning the session exists, is active, and hasn't timed out.
+app.post('/validateUserSession', authenticateToken, (request, response) => {
+    const { username } = request.body; // Username from frontend sessionStorage
+
+    // Check if the frontend username matches the token's true owner on the server
+    if (username && username !== request.username) 
+    { return response.status(401).json({ success: false, error: 'Session security violation: Username mismatch. Please sign in again.' }); }
+
+    response.json({ success: true, message: "Session exists", username: request.username });
+});
 
 app.post('/update/Clients/signIn', (request, response) => {
     const { username, password } = request.body;
@@ -41,8 +170,9 @@ app.post('/update/Clients/signIn', (request, response) => {
         if (userData) 
         {
             let token = crypto.randomUUID();
-            while (activeUserSessions.has(token)) { token = crypto.randomUUID(); }
-            activeUserSessions.set(token, userData.username); // Associate a username with a token
+            while (activeUserSessions.has(token)) { token = crypto.randomUUID(); } // AVOID DUPLICATES
+            registerSession(token, userData.username); // Store session with timestamp            
+            
             response.json({ success: true, data: userData, token: token }); 
         } 
         else { response.status(401).json({ success: false, error: 'Invalid username or password.' }); }
@@ -69,8 +199,9 @@ app.post('/insert/Clients', (request, response) => {
         if (userData) 
         {
             let token = crypto.randomUUID();
-            while (activeUserSessions.has(token)) { token = crypto.randomUUID(); }
-            activeUserSessions.set(token, userData.username); // Associate a username with a token
+            while (activeUserSessions.has(token)) { token = crypto.randomUUID(); } // AVOID DUPLICATES
+            registerSession(token, userData.username); // Store session with timestamp
+            
             response.json({ success: true, data: userData, token: token });
         } 
         else { response.status(400).json({ success: false, error: 'Registration failed or user already exists.' }); }
