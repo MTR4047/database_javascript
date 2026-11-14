@@ -7,7 +7,8 @@ function showError(msg) { if (errorMsg) errorMsg.textContent = msg; }
 
 // --- SESSION GUARD FOR BACK BUTTON NAVIGATION ---
 async function checkExistingSession() {
-    const token = sessionStorage.getItem('sessionToken'); const user = sessionStorage.getItem('loggedInUser');
+    const token = sessionStorage.getItem('sessionToken'); 
+    const user = sessionStorage.getItem('loggedInUser');
 
     // If session data exists, the user is trying to access index.html while logged in
     if (token || user) {
@@ -25,10 +26,10 @@ async function checkExistingSession() {
                         body: JSON.stringify({ username: user })
                     });
                 } 
-                catch (err) { console.error('Backend sign-out notification error:', err);                }
+                catch (err) { console.error('Backend sign-out notification error:', err); }
             } 
         } else {
-            // User disagreed: Disallow going back by redirecting them forward again
+            // User disagreed: Disallow going back by redirecting them to dashboard page
             window.location.href = 'tableContents.html';
         }
     }

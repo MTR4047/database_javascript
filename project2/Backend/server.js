@@ -5,6 +5,7 @@ import cors from 'cors';
 import crypto from 'crypto'; // Session tokensss
 import dotenv from 'dotenv';
 import dbService from './db.js'; // Monolithic DBService that hosts compartmentalized services
+import { SessionMinHeap, SESSION_TIMEOUT_MS, UPDATE_THRESHOLD_MS, CHECK_INTERVAL_MS } from '../Public/sessionMGMT.js';
 
 dotenv.config();
 const app = express();
@@ -14,8 +15,8 @@ app.use(express.urlencoded({extended: false}));
 
 // #region Authentication & Client Management
 const activeUserSessions = new Map();
-const SESSION_TIMEOUT_MS = 10.5 * 60 * 1000; // 10.5 minutes in milliseconds
-const UPDATE_THRESHOLD_MS = 2 * 60 * 1000; // Update when necessary, 2 minute update threshold
+// const SESSION_TIMEOUT_MS = 10.5 * 60 * 1000; // 10.5 minutes in milliseconds
+// const UPDATE_THRESHOLD_MS = 2 * 60 * 1000; // Update when necessary, 2 minute update threshold
 
 // #region CLEANUP
 
@@ -29,51 +30,6 @@ setInterval(() => {
     }
 }, 120 * 1000); // Run every two minutes, if session has been inactive for longer than 10.5 minutes, PERISH IT
 */
-
-class SessionMinHeap {
-    constructor() { this.heap = []; }
-
-    push(token, expiresAt) {
-        this.heap.push({ token, expiresAt });
-        this._upheap(this.heap.length - 1);
-    }
-
-    pop() {
-        if (this.heap.length === 0) return null;
-        if (this.heap.length === 1) return this.heap.pop();
-        const top = this.heap[0];
-        this.heap[0] = this.heap.pop();
-        this._downheap(0);
-        return top;
-    }
-
-    peek() { return this.heap.length > 0 ? this.heap[0] : null; }
-
-    _upheap(i) {
-        while (i > 0) {
-            const p = Math.floor((i - 1) / 2);
-            if (this.heap[i].expiresAt >= this.heap[p].expiresAt) break;
-            [this.heap[i], this.heap[p]] = [this.heap[p], this.heap[i]];
-            i = p;
-        }
-    }
-
-    _downheap(i) {
-        const last = this.heap.length - 1;
-        while ((i * 2 + 1) <= last) {
-            let left = i * 2 + 1;
-            let right = left + 1;
-            let smallest = i;
-
-            if (this.heap[left].expiresAt < this.heap[smallest].expiresAt) smallest = left;
-            if (right <= last && this.heap[right].expiresAt < this.heap[smallest].expiresAt) smallest = right;
-
-            if (smallest === i) break;
-            [this.heap[i], this.heap[smallest]] = [this.heap[smallest], this.heap[i]];
-            i = smallest;
-        }
-    }
-}
 
 const sessionHeap = new SessionMinHeap();
 
@@ -211,7 +167,6 @@ app.post('/insert/Clients', (request, response) => {
         response.status(500).json({ success: false, error: 'Server error during registration.' });
     });
 });
-
 
 /* Here, on the app.js, we have to pass something like fetch(http://localhost:5050/delete/Users/${username}),  
 { method: 'DELETE', headers: { 'user-session-token': sessionToken }, body: JSON.stringify({username: username}) }).then
