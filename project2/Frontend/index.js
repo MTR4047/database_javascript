@@ -1,3 +1,5 @@
+import { removeSessionStorageContents } from "../Public/sessionMGMT.js";
+
 const loginForm = document.querySelector('#user-sign-in');
 const registerBtn = document.querySelector('#register-button');
 const errorMsg = document.querySelector('#error-message');
@@ -15,8 +17,8 @@ async function checkExistingSession() {
         const confirmLogout = window.confirm("You are currently logged in. Going back to the login page will log you out. Do you want to proceed?");
 
         // User confirmed: Clear session storage and notify backend
-        if (confirmLogout) {            
-            sessionStorage.removeItem('sessionToken'); sessionStorage.removeItem('loggedInUser');
+        if (confirmLogout) {
+            removeSessionStorageContents();
 
             if (token) {                
                 try {
@@ -30,15 +32,13 @@ async function checkExistingSession() {
             } 
         } else {
             // User disagreed: Disallow going back by redirecting them to dashboard page
-            window.location.href = 'tableContents.html';
+            window.location.href = '.html';
         }
     }
 }
 
-// Run check on initial page load
+// Run check on initial page load; Run check on pageshow event (handles browser Back/Forward cache in modern browsers)
 window.addEventListener('DOMContentLoaded', checkExistingSession);
-
-// Run check on pageshow event (handles browser Back/Forward cache in modern browsers)
 window.addEventListener('pageshow', (event) => { if (event.persisted) { checkExistingSession(); }} );
 
 // Sign In via form submit event (triggers native pattern checks)
@@ -63,6 +63,7 @@ loginForm.onsubmit = async function(e)
         {
             sessionStorage.setItem('loggedInUser', resData.data.username); // Can use session storage to get the data, the token begin used is better though
             sessionStorage.setItem('sessionToken', resData.token);
+            sessionStorage.setItem('lastActiveTime', resData.activeTime);
             window.location.href = 'tableContents.html'; // with session storage, we don't need to pass data!
         } 
         else { showError(resData.error || 'Invalid credentials. Check username and password.'); }
@@ -93,13 +94,14 @@ registerBtn.onclick = async function()
 
         const resData = await response.json();
 
-        if (response.ok && resData.success) {
+        if (response.ok && resData.success) 
+        {
             sessionStorage.setItem('loggedInUser', resData.data.username); // Wouldn't use this as much as the token
             sessionStorage.setItem('sessionToken', resData.token);
+            sessionStorage.setItem('lastActiveTime', resData.activeTime);
             window.location.href = 'tableContents.html';
-        } else {
-            showError(resData.error || 'Registration failed.');
-        }
+        } 
+        else { showError(resData.error || 'Registration failed.'); }
     } 
     catch (err) { console.error('Registration Error:', err); showError('Unable to connect to server.'); }
 };

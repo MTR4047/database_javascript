@@ -127,9 +127,10 @@ app.post('/update/Clients/signIn', (request, response) => {
         {
             let token = crypto.randomUUID();
             while (activeUserSessions.has(token)) { token = crypto.randomUUID(); } // AVOID DUPLICATES
-            registerSession(token, userData.username); // Store session with timestamp            
+            const now = Date.now();
+            registerSession(token, userData.username, now); // Store session with timestamp            
             
-            response.json({ success: true, data: userData, token: token }); 
+            response.json({ success: true, data: userData, token: token, activeTime: now }); 
         } 
         else { response.status(401).json({ success: false, error: 'Invalid username or password.' }); }
     })
@@ -156,9 +157,10 @@ app.post('/insert/Clients', (request, response) => {
         {
             let token = crypto.randomUUID();
             while (activeUserSessions.has(token)) { token = crypto.randomUUID(); } // AVOID DUPLICATES
-            registerSession(token, userData.username); // Store session with timestamp
+            const now = Date.now();
+            registerSession(token, userData.username, now); // Store session with timestamp
             
-            response.json({ success: true, data: userData, token: token });
+            response.json({ success: true, data: userData, token: token, activeTime: now }); 
         } 
         else { response.status(400).json({ success: false, error: 'Registration failed or user already exists.' }); }
     })
