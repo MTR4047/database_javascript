@@ -27,3 +27,7 @@ This somewhat extends to **Materials**, we assume that each flooring product has
 
 **Bill Items** is more customizable (in terms of handling custom charges and such) than **Quote Items**, we make the assumption that the quote ought to be more rigid in nature as it deals with FlooringProducts directly. Otherwise, we could have another table called *CustomLineItems* which would have two foreign nullable keys (QuoteID or BillingID), alongside a chargeType, description, quantity (where applicable), unitPrice and totalPrice values.
 
+* We assume that no more than 100 quotes and 100 bills can be created for one flooring project. By that point, the administrator Anna would probably be exhausted from the chicanery.
+
+
+
