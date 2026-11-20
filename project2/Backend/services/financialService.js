@@ -1,4 +1,4 @@
-/** Handles billing, order, and quote services as they are interconnected. */
+/** Handles billing, order, quote, and negotiation services as they are interconnected. */
 export default class FinancialService 
 {
     #connection;
@@ -17,6 +17,11 @@ export default class FinancialService
     // #endregion
 
     // #region BILL TABLE
+
+    
+    // #endregion
+
+    // #region NEGOTIATION TABLe
 
     
     // #endregion
