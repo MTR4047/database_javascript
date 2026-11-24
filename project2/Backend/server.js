@@ -45,7 +45,7 @@ setInterval(() => {
         { activeUserSessions.delete(token); }
     }
     
-}, CHECK_INTERVAL_MS * 2); // Perform cleanup operations every two minutes
+}, BUCKET_MS); // Perform cleanup operations every minute
 
 // #endregion CLEANUP
 
