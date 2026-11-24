@@ -1,4 +1,4 @@
-import { removeSessionStorageContents } from "../Public/sessionMGMT.js";
+import { removeSessionStorageContents, SSID_USER_ID, SSID_USER_LAST_ACTIVE, SSID_USER_TOKEN } from "../Public/sessionMGMT.js";
 
 const loginForm = document.querySelector('#user-sign-in');
 const registerBtn = document.querySelector('#register-button');
@@ -9,8 +9,8 @@ function showError(msg) { if (errorMsg) errorMsg.textContent = msg; }
 
 // --- SESSION GUARD FOR BACK BUTTON NAVIGATION ---
 async function checkExistingSession() {
-    const token = sessionStorage.getItem('sessionToken'); 
-    const user = sessionStorage.getItem('loggedInUser');
+    const token = sessionStorage.getItem(SSID_USER_TOKEN); 
+    const user = sessionStorage.getItem(SSID_USER_ID);
 
     // If session data exists, the user is trying to access index.html while logged in
     if (token || user) {
@@ -24,7 +24,7 @@ async function checkExistingSession() {
                 try {
                     const response = await fetch('http://localhost:5050/update/Clients/signOut', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'user-session-token': token },
+                        headers: { 'Content-Type': 'application/json', [SSID_USER_TOKEN]: token },
                         body: JSON.stringify({ username: user })
                     });
                 } 
@@ -61,9 +61,9 @@ loginForm.onsubmit = async function(e)
         // Transition into the tableContents.html!
         if (response.ok && resData.success) 
         {
-            sessionStorage.setItem('loggedInUser', resData.data.username); // Can use session storage to get the data, the token begin used is better though
-            sessionStorage.setItem('sessionToken', resData.token);
-            sessionStorage.setItem('lastActiveTime', resData.activeTime);
+            sessionStorage.setItem(SSID_USER_ID, resData.data.username); // Can use session storage to get the data, the token begin used is better though
+            sessionStorage.setItem(SSID_USER_TOKEN, resData.token);
+            sessionStorage.setItem(SSID_USER_LAST_ACTIVE, resData.activeTime);
             window.location.href = 'tableContents.html'; // with session storage, we don't need to pass data!
         } 
         else { showError(resData.error || 'Invalid credentials. Check username and password.'); }
@@ -96,9 +96,9 @@ registerBtn.onclick = async function()
 
         if (response.ok && resData.success) 
         {
-            sessionStorage.setItem('loggedInUser', resData.data.username); // Wouldn't use this as much as the token
-            sessionStorage.setItem('sessionToken', resData.token);
-            sessionStorage.setItem('lastActiveTime', resData.activeTime);
+            sessionStorage.setItem(SSID_USER_ID, resData.data.username); // Wouldn't use this as much as the token
+            sessionStorage.setItem(SSID_USER_TOKEN, resData.token);
+            sessionStorage.setItem(SSID_USER_LAST_ACTIVE, resData.activeTime);
             window.location.href = 'tableContents.html';
         } 
         else { showError(resData.error || 'Registration failed.'); }

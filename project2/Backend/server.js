@@ -5,7 +5,7 @@ import cors from 'cors';
 import crypto from 'crypto'; // Session tokensss
 import dotenv from 'dotenv';
 import dbService from './db.js'; // Monolithic DBService that hosts compartmentalized services
-import { SESSION_TIMEOUT_MS, UPDATE_THRESHOLD_MS, CHECK_INTERVAL_MS, BUCKET_MS, SessionExpirationBuckets } from '../Public/sessionMGMT.js';
+import { SESSION_TIMEOUT_MS, UPDATE_THRESHOLD_MS, CHECK_INTERVAL_MS, BUCKET_MS, SessionExpirationBuckets, ROLES, SSID_USER_TOKEN } from '../Public/sessionMGMT.js';
 
 dotenv.config();
 const app = express();
@@ -50,9 +50,11 @@ setInterval(() => {
 // #endregion CLEANUP
 
 // Helper to register a session
-function registerSession(token, username, sessionDate = Date.now()) 
+
+
+function registerSession(token, username, sessionDate = Date.now(), role = ROLES.CLIENT) 
 {
-    const session = { username: username, lastActive: sessionDate, lastUpdated: sessionDate, bucketKey: undefined };
+    const session = { username: username, role: role, lastActive: sessionDate, lastUpdated: sessionDate, bucketKey: undefined };
     session.bucketKey = sessionBuckets.addTokenToBucket(token, now + SESSION_TIMEOUT_MS);
     activeUserSessions.set(token, session);
 }
@@ -60,7 +62,7 @@ function registerSession(token, username, sessionDate = Date.now())
 // Helper to validate incoming tokens on protected endpoints
 function authenticateToken(request, response, next) 
 {
-    const token = request.headers['user-session-token'];
+    const token = request.headers[SSID_USER_TOKEN];
     
     if (!token || !activeUserSessions.has(token)) {
         return response.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
@@ -132,7 +134,7 @@ app.post('/update/Clients/signIn', (request, response) => {
 });
 
 app.post('/update/Clients/signOut', authenticateToken, (request, response) => {
-    const token = request.headers['user-session-token'];
+    const token = request.headers[SSID_USER_TOKEN];
     
     if (token) { activeUserSessions.delete(token); }
     
@@ -172,7 +174,7 @@ app.delete('/delete/Clients', authenticateToken, (request, response) =>
     if (username !== authUser) 
     { return response.status(403).json({ success: false, error: 'User must be authenticated and can only delete their own records.' }); }
 
-    const token = request.headers['user-session-token'];
+    const token = request.headers[SSID_USER_TOKEN];
     const db = dbService.getInstance().getClientSRV();
     const result = db.deleteRowByUsername(username);
     

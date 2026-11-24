@@ -3,6 +3,15 @@ export const UPDATE_THRESHOLD_MS = 2 * 60 * 1000; // Update when necessary, 2 mi
 export const CHECK_INTERVAL_MS = 60 * 1000; // Check every 1 minute
 export const BUCKET_MS = 60 * 1000; // 1-minute buckets
 
+export const SSID_USER_TOKEN = 'user-session-token';
+export const SSID_USER_ID = 'user-id-name';
+export const SSID_USER_LAST_ACTIVE = 'user-last-active-time';
+
+export const ROLES = Object.freeze({
+    CLIENT: "client",
+    ADMIN: "admin"
+});
+
 export class SessionMinHeap {
     constructor() { this.heap = []; }
 
@@ -122,22 +131,22 @@ export function handleSessionExpiration(message = 'Session expired. Please sign 
 
 export function removeSessionStorageContents()
 {
-    sessionStorage.removeItem('user-session-token');
-    sessionStorage.removeItem('username');
-    sessionStorage.removeItem('lastActiveTime');
+    sessionStorage.removeItem(SSID_USER_TOKEN);
+    sessionStorage.removeItem(SSID_USER_ID);
+    sessionStorage.removeItem(SSID_USER_LAST_ACTIVE);
 }
 
 // Track user activity and update timestamp in sessionStorage, this is for LOCAL tracking! GLOBAL tracking is also handled on the server as well.
 function setupActivityListeners() {
     ['keydown', 'click', 'scroll', 'touchstart'].forEach(event => {
-        window.addEventListener(event, () => { sessionStorage.setItem('lastActiveTime', Date.now()); }, { passive: true });
+        window.addEventListener(event, () => { sessionStorage.setItem(SSID_USER_LAST_ACTIVE, Date.now()); }, { passive: true });
     });
 }
 
 // Validate session with the backend on page load
 async function validateSessionOnLoad() 
 {
-    const token = sessionStorage.getItem('user-session-token');
+    const token = sessionStorage.getItem(SSID_USER_TOKEN);
     const storedUsername = sessionStorage.getItem('username');
 
     if (!token || !storedUsername) 
@@ -146,7 +155,7 @@ async function validateSessionOnLoad()
     try {
         const response = await fetch('http://localhost:5050/validateUserSession', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'user-session-token': token },
+            headers: { 'Content-Type': 'application/json', [SSID_USER_TOKEN]: token },
             body: JSON.stringify({ username: storedUsername })
         });
 
@@ -168,12 +177,13 @@ async function validateSessionOnLoad()
 function startHeartbeat() 
 {
     // Initialize lastActiveTime if not present
-    if (!sessionStorage.getItem('lastActiveTime')) { sessionStorage.setItem('lastActiveTime', Date.now()); }
+    if (!sessionStorage.getItem(SSID_USER_LAST_ACTIVE)) 
+    { sessionStorage.setItem(SSID_USER_LAST_ACTIVE, Date.now()); }
 
     setInterval(async () => {
-        const token = sessionStorage.getItem('user-session-token'); if (!token) return;
+        const token = sessionStorage.getItem(SSID_USER_TOKEN); if (!token) return;
 
-        const lastActive = parseInt(sessionStorage.getItem('lastActiveTime') || Date.now(), 10);
+        const lastActive = parseInt(sessionStorage.getItem(SSID_USER_LAST_ACTIVE) || Date.now(), 10);
         const now = Date.now();
         const inactiveDuration = now - lastActive;
 
@@ -182,7 +192,7 @@ function startHeartbeat()
             try {
                 const response = await fetch('http://localhost:5050/api/session/ping', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'user-session-token': token }
+                    headers: { 'Content-Type': 'application/json', [SSID_USER_TOKEN]: token }
                 });
 
                 if (!response.ok) 
