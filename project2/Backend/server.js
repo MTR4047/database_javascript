@@ -5,7 +5,7 @@ import cors from 'cors';
 import crypto from 'crypto'; // Session tokensss
 import dotenv from 'dotenv';
 import dbService from './db.js'; // Monolithic DBService that hosts compartmentalized services
-import { SessionMinHeap, SESSION_TIMEOUT_MS, UPDATE_THRESHOLD_MS, CHECK_INTERVAL_MS } from '../Public/sessionMGMT.js';
+import { SESSION_TIMEOUT_MS, UPDATE_THRESHOLD_MS, CHECK_INTERVAL_MS, BUCKET_MS, SessionExpirationBuckets } from '../Public/sessionMGMT.js';
 
 dotenv.config();
 const app = express();
@@ -31,42 +31,30 @@ setInterval(() => {
 }, 120 * 1000); // Run every two minutes, if session has been inactive for longer than 10.5 minutes, PERISH IT
 */
 
-const sessionHeap = new SessionMinHeap();
+const sessionBuckets = new SessionExpirationBuckets(BUCKET_MS);
 
-// Background Sweeper with Lazy Deletion Validation
 setInterval(() => {
     const now = Date.now();
+    const candidateTokens = sessionBuckets.collectExpiredTokens(now);
 
-    // Pop off entries that have been expired, then validate to see if the user map session 
-    // Note that, the oldest entries are at the top! We will have a maximum of current_users * ( MAXIMUM_TIMEOUT_TIME / UPDATE_THRESHOLD_TIME ) in this structure
-    while (sessionHeap.peek() && sessionHeap.peek().expiresAt <= now) 
+    for (const token of candidateTokens) 
     {
-        const expiredEntry = sessionHeap.pop();
-        const session = activeUserSessions.get(expiredEntry.token);
-
-        // If the session exists
-        if (session) 
-        {
-            const currentExpiresAt = session.lastActive + SESSION_TIMEOUT_MS;
-            
-            // Lazy deletion match check: Does the heap entry match the user's actual current expiration?
-            if (currentExpiresAt === expiredEntry.expiresAt) // Double check it's truly past the timeout window
-            {
-                if (now - session.lastActive > SESSION_TIMEOUT_MS) activeUserSessions.delete(expiredEntry.token);
-            }
-            // If currentExpiresAt is greater, the user refreshed their session, so this old heap entry is safely ignored and discarded!
-        }
+        const session = activeUserSessions.get(token);
+        
+        if (session && now - session.lastActive > SESSION_TIMEOUT_MS) 
+        { activeUserSessions.delete(token); }
     }
-}, 120 * 1000);
+    
+}, CHECK_INTERVAL_MS * 2); // Perform cleanup operations every two minutes
 
 // #endregion CLEANUP
 
 // Helper to register a session
 function registerSession(token, username, sessionDate = Date.now()) 
 {
-    activeUserSessions.set(token, { username: username, lastActive: sessionDate, lastUpdated: sessionDate });
-    // Push the calculated expiration to the heap
-    sessionHeap.push(token, sessionDate + SESSION_TIMEOUT_MS);
+    const session = { username: username, lastActive: sessionDate, lastUpdated: sessionDate, bucketKey: undefined };
+    session.bucketKey = sessionBuckets.addTokenToBucket(token, now + SESSION_TIMEOUT_MS);
+    activeUserSessions.set(token, session);
 }
 
 // Helper to validate incoming tokens on protected endpoints
@@ -83,6 +71,9 @@ function authenticateToken(request, response, next)
 
     if (now - session.lastActive > SESSION_TIMEOUT_MS) {
         activeUserSessions.delete(token);
+        if (session.bucketKey !== undefined && sessionBuckets.buckets.has(session.bucketKey)) 
+        { sessionBuckets.buckets.get(session.bucketKey).delete(token); }
+
         return response.status(401).json({ success: false, error: 'Session expired due to inactivity. Please sign in again.' });
     }
 
@@ -92,7 +83,7 @@ function authenticateToken(request, response, next)
         session.lastActive = now;
         session.lastUpdated = now; // Track when we last bumped the expiration
 
-        sessionHeap.push(token, session.lastActive);
+        sessionBuckets.moveTokenToNewBucket(token, session, now + SESSION_TIMEOUT_MS);
     }
 
     // Note that, if we have authenticate token as "parameter" on the endpoint, it becomes a middleware function!!

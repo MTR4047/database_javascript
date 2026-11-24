@@ -1,6 +1,7 @@
 export const SESSION_TIMEOUT_MS = 10.5 * 60 * 1000; // 10.5 minutes max limit
 export const UPDATE_THRESHOLD_MS = 2 * 60 * 1000; // Update when necessary, 2 minute update threshold
 export const CHECK_INTERVAL_MS = 60 * 1000; // Check every 1 minute
+export const BUCKET_MS = 60 * 1000; // 1-minute buckets
 
 export class SessionMinHeap {
     constructor() { this.heap = []; }
@@ -44,6 +45,69 @@ export class SessionMinHeap {
             [this.heap[i], this.heap[smallest]] = [this.heap[smallest], this.heap[i]];
             i = smallest;
         }
+    }
+}
+
+// SessionExpirationBuckets.js
+
+export class SessionExpirationBuckets 
+{
+    /** @type {Number} */ bucketMs;
+    /** @type {Map<, Set<token>>} */ buckets;
+
+    constructor(inpBucketMs = BUCKET_MS) 
+    {
+        this.bucketMs = inpBucketMs;
+        // Map<bucketStartTimestamp, Set<token>>
+        this.buckets = new Map();
+    }
+
+    getBucketKey(timestamp) 
+    { return Math.floor(timestamp / this.bucketMs) * this.bucketMs; }
+
+    addTokenToBucket(token, expiryTimestamp) 
+    {
+        const bucketKey = this.getBucketKey(expiryTimestamp);
+        if (!this.buckets.has(bucketKey)) {
+            this.buckets.set(bucketKey, new Set());
+        }
+        this.buckets.get(bucketKey).add(token);
+        return bucketKey;
+    }
+
+    moveTokenToNewBucket(token, session, newExpiryTimestamp) {
+        const newBucketKey = this.getBucketKey(newExpiryTimestamp);
+
+        if (session.bucketKey === newBucketKey) {
+            return session.bucketKey;
+        }
+
+        if (session.bucketKey !== undefined && this.buckets.has(session.bucketKey)) {
+            const oldSet = this.buckets.get(session.bucketKey);
+            oldSet.delete(token);
+            if (oldSet.size === 0) {
+                this.buckets.delete(session.bucketKey);
+            }
+        }
+
+        session.bucketKey = this.addTokenToBucket(token, newExpiryTimestamp);
+        return session.bucketKey;
+    }
+
+    // Collects tokens from buckets whose minute window has elapsed and removes those buckets
+    collectExpiredTokens(now = Date.now()) {
+        const candidateTokens = new Set();
+
+        for (const [bucketKey, tokenSet] of this.buckets.entries()) {
+            if (bucketKey + this.bucketMs <= now) {
+                for (const token of tokenSet) {
+                    candidateTokens.add(token);
+                }
+                this.buckets.delete(bucketKey);
+            }
+        }
+
+        return candidateTokens;
     }
 }
 
