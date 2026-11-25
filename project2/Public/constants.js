@@ -1,7 +1,23 @@
 export const tableLimit = 25;
 export function fixPage(page) { return Math.max(1, parseInt(page, 10) || 1); }
 
+// Not to be used on text box entries
+export function transformToValidInput(val) 
+{
+    if (typeof val !== 'string') return val;
+
+    // Matches specified dangerous/unwanted punctuation: ' " ? ! = ` \ ; < >
+    // Replaces matches with an empty string ''; double protection (as SQL query parameters handle this already)
+    const sanitized = val.replace(/['"?!=`\\;<>]/g, '');
+
+    return sanitized;
+};
+
 // #region CLIENTS, ADDRESS
+
+export const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+export const nonAlphanumericRegex = /[^a-z0-9]/gi;
+export const nonNumericRegex = /[^0-9]/gi;
 
 // #region CLIENT TABLE
 export const CLIENT_TN = "Client";
@@ -10,11 +26,6 @@ export const CLIENT_TC = Object.freeze({
     firstname: "firstname", lastname: "lastname", passwordHash: "passwordHash",
     phoneNumber: "phoneNumber", email: "email", 
     cardNumber: "cardNumber", cardCVV: "cardCVV", cardExpiration: "cardExpiration"
-
-    /* 
-    salary: "salary", age: "age",
-    registerday: "registerday", signintime: "signintime"
-    */
 });
 // #endregion
 
