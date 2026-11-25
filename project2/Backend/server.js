@@ -60,6 +60,11 @@ function registerSession(token, email, sessionDate = Date.now(), role = ROLES.CL
     activeUserSessions.set(token, session);
 }
 
+function deregisterSession(token)
+{
+    
+}
+
 // Helper to validate incoming tokens on protected endpoints
 function authenticateToken(request, response, next) 
 {
@@ -105,7 +110,7 @@ app.post('/api/session/ping', authenticateToken, (request, response) => {
 // If the request reaches this point, authenticateToken has already passed, meaning the session exists, is active, and hasn't timed out.
 app.post('/validateUserSession', authenticateToken, (request, response) => {
     const userID = request.body?.[userID_alias]; // const { username: userID } = request.body; // Username from frontend sessionStorage
-    const serverSessionUserID = request[userID_alias];    
+    const serverSessionUserID = request[userID_alias];
 
     // Check if the frontend value matches the token's true owner on the server
     if (userID && userID !== serverSessionUserID) 
@@ -176,15 +181,15 @@ app.post('/insert/Clients', (request, response) => {
 */
 app.delete('/delete/Clients', authenticateToken, (request, response) => 
 {
-    const { username } = request.body; console.log("delete " + username);   
+    const userID = request.body?.[userID_alias]; console.log("delete " + userID);   
+    const serverSessionUserID = request[userID_alias];
     
-    const authUser = request.username;
-    if (username !== authUser) 
+    if (userID !== serverSessionUserID) 
     { return response.status(403).json({ success: false, error: 'User must be authenticated and can only delete their own records.' }); }
 
     const token = request.headers[SSID_USER_TOKEN];
     const db = dbService.getInstance().getClientSRV();
-    const result = db.deleteRowByUsername(username);
+    const result = db.deleteRowByUserID(userID);
     
     result.then(data => {
         // Remove active token from server memory map; Return success payload to client

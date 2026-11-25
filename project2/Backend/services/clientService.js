@@ -216,17 +216,17 @@ export default class ClientService
         catch (error) { console.log(error); return false; }
     }
 
-    async deleteRowByUsername(username)
+    async deleteRowByUserID(email)
    {
         try
         {
-            const USR_TN = DbService.USERS_TABLE_NAME; const USR_TC = DbService.USERS_TABLE_COLUMNS;
-            const transformedUsername = this.#transformUsername(username);
+            const CLIENT_TN = ClientService.CLIENT_SRV_TN; const CLIENT_TC = ClientService.CLIENT_SRV_TC;
+            const transformedUserID = this.#transformEmail(email);
             
             // use await to call an asynchronous function
             const response = await new Promise((resolve, reject) => {
-                const query = `DELETE FROM ${USR_TN} WHERE ${USR_TC.username} = ?;`;
-                connection.query(query, [transformedUsername], (err, result) => {
+                const query = `DELETE FROM ${CLIENT_TN} WHERE ${CLIENT_TC.email} = ?;`;
+                connection.query(query, [transformedUserID], (err, result) => {
                     if(err) reject(new Error(err.message));
                     else resolve(result.affectedRows);
                 });
