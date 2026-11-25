@@ -120,10 +120,9 @@ app.post('/update/Clients/signIn', (request, response) => {
         {
             let token = crypto.randomUUID();
             while (activeUserSessions.has(token)) { token = crypto.randomUUID(); } // AVOID DUPLICATES
-            const now = Date.now();
-            const role = ROLES.CLIENT; // TODO: Make a SQL function which checks for Ana's user ID and then assign role, this would be based on the result
+            const now = Date.now();        
 
-            registerSession(token, userData.username, now, role); // Store session with timestamp            
+            registerSession(token, userData.username, now, userData.role); // Store session with timestamp            
             
             response.json({ success: true, data: userData, token: token, activeTime: now }); 
         } 

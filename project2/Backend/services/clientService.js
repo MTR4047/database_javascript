@@ -1,5 +1,9 @@
 import { CLIENT_TC, CLIENT_TN, nonAlphanumericRegex, nonNumericRegex, transformToValidInput } from "../../Public/constants.js";
+import { ROLES as userRoles } from "../../Public/sessionMGMT.js";
+import { DbService } from "../db.js";
 import crypto from 'crypto';
+import dotenv from 'dotenv';
+dotenv.config();
 
 function hashPasswordPBKDF2(password) 
 {
@@ -27,39 +31,38 @@ export default class ClientService
     updateConnection(connection) { this.#connection = connection; }
 
     // #region CLIENT TABLE
-    static CLIENTS_TABLE_NAME = CLIENT_TN;
-    static CLIENTS_TABLE_COLUMNS = CLIENT_TC;
-    static ALLOWED_CLIENTS_COLUMNS_SET = new Set(Object.values(this.CLIENTS_TABLE_COLUMNS));
+    static CLIENT_SRV_TN = CLIENT_TN;
+    static CLIENT_SRV_TC = CLIENT_TC;
+    static ALLOWED_CLIENTS_COLUMNS_SET = new Set(Object.values(this.CLIENT_SRV_TC));
     static ALLOWED_CLIENTS_UPDATE_SET = (() => {
         const updateSet = new Set(this.ALLOWED_CLIENTS_COLUMNS_SET);
-        updateSet.delete(this.CLIENTS_TABLE_COLUMNS.clientID);
+        updateSet.delete(this.CLIENT_SRV_TC.clientID);
         return updateSet;
     })();
 
     // #region helper update funcs
     // No need to transform Address ID
     #transformersClientsMap = new Map([
-        [ClientService.CLIENTS_TABLE_COLUMNS.addressID, (val) => val ],
-        [ClientService.CLIENTS_TABLE_COLUMNS.firstname, ], 
-        [ClientService.CLIENTS_TABLE_COLUMNS.lastname, ], 
-        [ClientService.CLIENTS_TABLE_COLUMNS.passwordHash, ], 
-        [ClientService.CLIENTS_TABLE_COLUMNS.phoneNumber, ], 
-        [ClientService.CLIENTS_TABLE_COLUMNS.email, ], 
-        [ClientService.CLIENTS_TABLE_COLUMNS.cardNumber, ],
-        [ClientService.CLIENTS_TABLE_COLUMNS.cardCVV, ],
-        [ClientService.CLIENTS_TABLE_COLUMNS.cardExpiration, ]
+        [ClientService.CLIENT_SRV_TC.addressID, (val) => val ],
+        [ClientService.CLIENT_SRV_TC.firstname, (val) => this.#transformFirstname(val) ], 
+        [ClientService.CLIENT_SRV_TC.lastname, (val) => this.#transformLastname(val) ], 
+        [ClientService.CLIENT_SRV_TC.passwordHash, (val) => this.#transformPassword(val, true) ], 
+        [ClientService.CLIENT_SRV_TC.phoneNumber, (val) => this.#transformPhoneNumber(val) ], 
+        [ClientService.CLIENT_SRV_TC.email, (val) => this.#transformEmail(val) ], 
+        [ClientService.CLIENT_SRV_TC.cardNumber, (val) => this.#transformCardNumber(val) ],
+        [ClientService.CLIENT_SRV_TC.cardCVV, (val) => this.#transformCVV(val) ],
+        [ClientService.CLIENT_SRV_TC.cardExpiration, (val) => this.#transformCardExpiry(val) ]
     ]);
-
     
     #transformFirstname(val) 
     {
         val = transformToValidInput(val);
-        return typeof val === 'string' ? val.trim().substring(0, 256) : undefined;
+        return typeof val === 'string' ? val.trim().substring(0, 256): undefined;
     }
     #transformLastname(val) 
     {
         val = transformToValidInput(val);
-        return typeof val === 'string' ? val.trim().substring(0, 256) : undefined;
+        return typeof val === 'string' ? val.trim().substring(0, 256): undefined;
     }
 
     #transformPassword(val, cryptoRun = false) {
@@ -87,7 +90,7 @@ export default class ClientService
         val = transformToValidInput(val);
         if (typeof val !== 'string') return undefined;
         
-        const trimmed = val.trim().substring(0, 100);
+        const trimmed = val.trim().substring(0, 100).toLowerCase();
         return trimmed.length >= 2 ? trimmed: undefined;
     }
 
@@ -137,6 +140,49 @@ export default class ClientService
     }
 
     // #endregion HELPER UPDATE FUNCS
+
+    // Private helper strictly for pagination on SELECT queries
+    #returnOffsetSTMT(page = 1, sortColumn = ClientService.CLIENT_SRV_TC.clientID, isAscending = true) 
+    {
+        DbService.returnOffsetSTMT(page, sortColumn, isAscending);
+    }
+
+    async signInUser(email, password)
+    {
+        try {
+            const CLIENT_TN = ClientService.CLIENT_SRV_TN; const CLIENT_TC = ClientService.CLIENT_SRV_TC;
+
+            // const signInAttempt = new Date(); 
+            const transformedUserID = this.#transformEmail(email); const transformedPassword = this.#transformPassword(password);
+            // Abort if input validation failed
+            if (!transformedUserID || !transformedPassword) { return false; }            
+
+            const success = await new Promise((resolve, reject) => {
+                const pwQuery = `SELECT ${CLIENT_TC.email}, ${CLIENT_TC.passwordHash}, ${CLIENT_TC.firstname}, ${CLIENT_TC.lastname} FROM ${CLIENT_TN} WHERE ${CLIENT_TC.email} LIKE ?`;
+                
+                this.#connection.query(pwQuery, [transformedUserID], (err, results) => {
+                    if (err) reject(new Error(err.message));
+                    else resolve(results);
+                });
+            });
+
+            // Step 2: Verify a returned row and PBKDF2 hash against incoming password
+            if (!success || success.length === 0) return false; const user = success[0];
+            if (!verifyPasswordPBKDF2(transformedPassword, user[CLIENT_TC.passwordHash])) {return false;} // It's better to perform sanitization on the frontend, and hashing on the backend; though for this task, we stuck with sanitization in the backend as well
+            
+            // Step 3: Add check to see if admin or client
+            const role = user[CLIENT_TC.email] === process.env.CONTRACTOR ? userRoles.CONTRACTOR: userRoles.CLIENT;
+
+            // Return the newly created record using the custom non auto increment primary key            
+            return {
+                [CLIENT_TC.email]: user[CLIENT_TC.email],
+                [CLIENT_TC.firstname]: user[CLIENT_TC.firstname],
+                [CLIENT_TC.lastname]: user[CLIENT_TC.lastname],
+                role: role
+            };
+        } 
+        catch (error) { console.log(error); return false; }
+    }
 
     // #endregion
 

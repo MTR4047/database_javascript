@@ -23,8 +23,8 @@ export const nonNumericRegex = /[^0-9]/gi;
 export const CLIENT_TN = "Client";
 export const CLIENT_TC = Object.freeze({ 
     clientID: "clientID", addressID: "addressID",    
-    firstname: "firstname", lastname: "lastname", passwordHash: "passwordHash",
-    phoneNumber: "phoneNumber", email: "email", 
+    firstname: "firstname", lastname: "lastname", passwordHash: "passwordHash", password: "passwordHash",
+    phoneNumber: "phoneNumber", email: "email", username: "email",
     cardNumber: "cardNumber", cardCVV: "cardCVV", cardExpiration: "cardExpiration"
 });
 // #endregion

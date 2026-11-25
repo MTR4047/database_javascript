@@ -21,6 +21,7 @@ import ClientSRV from './services/clientService';
 import ProductSRV from './services/productService';
 import ProjectRequestSRV from './services/projectRequestService';
 import FinancialSRV from './services/financialService';
+import { tableLimit } from '../Public/constants';
 
 let instance = null;
 class DbService 
@@ -31,6 +32,22 @@ class DbService
     /** @type {FinancialSRV} */         #financialSRV = null;       getFinancialSRV() {this.#financialSRV.updateConnection(connection); return this.#financialSRV;}
     /** @type {ProductSRV} */           #productSRV = null;         getProductSRV() {this.#productSRV.updateConnection(connection); return this.#productSRV;}
     /** @type {ProjectRequestSRV} */    #projectRequestSRV = null;  getProjectRequestSRV() {this.#projectRequestSRV.updateConnection(connection); return this.#projectRequestSRV;}    
+
+    static #offset = tableLimit; // The frontend simply sensd in the page #, and we multiply using the offset with ((page-1)*offset)
+    static #limit = this.#offset + 1; // The frontend does not see this nor can it modify this, this is simply the limit of rows per page, the +1 here is a trick to enable the "next" button
+    static returnOffsetSTMT(page = 1, sortColumn, isAscending = true) 
+    {
+        // Ensure valid page number (minimum 1); we can instead do this outside the function, ensuring that the valid page 
+        // const validPage = Math.max(1, parseInt(page, 10) || 1);
+        
+        // Calculate offset dynamically per request, fetch 1 extra row to calculate hasNextPage
+        const offset = (page - 1) * DbService.#offset;
+        const fetchLimit = DbService.#limit;        
+        const direction = isAscending ? 'ASC' : 'DESC';
+
+        // MUST BE: ORDER BY ... LIMIT ... OFFSET ...
+        return `ORDER BY ${sortColumn} ${direction} LIMIT ${fetchLimit} OFFSET ${offset};`;
+    }
 
     constructor() {
         this.connection = connection; // Pass the shared connection down to each micro-service instance       
