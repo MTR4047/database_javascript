@@ -184,6 +184,60 @@ export default class ClientService
         catch (error) { console.log(error); return false; }
     }
 
+    async insertNewUser(email, password) 
+    {
+        try {
+            const CLIENT_TN = ClientService.CLIENT_SRV_TN; const CLIENT_TC = ClientService.CLIENT_SRV_TC;
+
+            // const dateAdded = new Date();
+            const transformedUserID = this.#transformEmail(email); const transformedPassword = this.#transformPassword(password);
+            // Abort if input validation failed
+            if (!transformedUserID || !transformedPassword) { return false; }
+            
+            const success = await new Promise((resolve, reject) => {
+                const query = `INSERT INTO ${CLIENT_TN} (${CLIENT_TC.email}, ${CLIENT_TC.password}) VALUES (?, ?);`;
+                
+                const hashedPw = hashPasswordPBKDF2(transformedPassword);
+                this.#connection.query(query, [transformedUserID, hashedPw], (err, result) => {
+                    if (err) reject(new Error(err.message));
+                    // Verify 1 row was inserted
+                    else resolve(result.affectedRows === 1); 
+                });
+            });
+
+            if (!success) return false;
+
+            // Return the newly created record using the custom non auto increment primary key
+            return {
+                [CLIENT_TC.email]: transformedUserID
+            };
+
+        } 
+        catch (error) { console.log(error); return false; }
+    }
+
+    async deleteRowByUsername(username)
+   {
+        try
+        {
+            const USR_TN = DbService.USERS_TABLE_NAME; const USR_TC = DbService.USERS_TABLE_COLUMNS;
+            const transformedUsername = this.#transformUsername(username);
+            
+            // use await to call an asynchronous function
+            const response = await new Promise((resolve, reject) => {
+                const query = `DELETE FROM ${USR_TN} WHERE ${USR_TC.username} = ?;`;
+                connection.query(query, [transformedUsername], (err, result) => {
+                    if(err) reject(new Error(err.message));
+                    else resolve(result.affectedRows);
+                });
+            });
+
+            console.log(response);  // for debugging to see the result of select
+            return response === 1 ? true: false;
+        }
+        catch(error) { console.log(error); return false; }
+   }
+
     // #endregion
 
     // #region ADDRESS TABLE

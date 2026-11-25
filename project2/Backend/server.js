@@ -6,6 +6,7 @@ import crypto from 'crypto'; // Session tokensss
 import dotenv from 'dotenv';
 import dbService from './db.js'; // Monolithic DBService that hosts compartmentalized services
 import { SESSION_TIMEOUT_MS, UPDATE_THRESHOLD_MS, CHECK_INTERVAL_MS, BUCKET_MS, SessionExpirationBuckets, ROLES, SSID_USER_TOKEN } from '../Public/sessionMGMT.js';
+import { userID_alias } from '../Public/constants.js';
 
 dotenv.config();
 const app = express();
@@ -52,9 +53,9 @@ setInterval(() => {
 // Helper to register a session
 
 
-function registerSession(token, username, sessionDate = Date.now(), role = ROLES.CLIENT) 
+function registerSession(token, email, sessionDate = Date.now(), role = ROLES.CLIENT) 
 {
-    const session = { username: username, role: role, lastActive: sessionDate, lastUpdated: sessionDate, bucketKey: undefined };
+    const session = { [userID_alias]: email, role: role, lastActive: sessionDate, lastUpdated: sessionDate, bucketKey: undefined };
     session.bucketKey = sessionBuckets.addTokenToBucket(token, now + SESSION_TIMEOUT_MS);
     activeUserSessions.set(token, session);
 }
@@ -89,7 +90,9 @@ function authenticateToken(request, response, next)
     }
 
     // Note that, if we have authenticate token as "parameter" on the endpoint, it becomes a middleware function!!
-    request.username = activeUserSessions.get(token); // Attach username to request object that gets passed into the endpoint
+    // Attach using the shared alias ("email") and extract the identifier value from `session`
+    request[userID_alias] = session[userID_alias] ?? session.email ?? session.username;
+    
     next();
 }
 
@@ -101,19 +104,21 @@ app.post('/api/session/ping', authenticateToken, (request, response) => {
 
 // If the request reaches this point, authenticateToken has already passed, meaning the session exists, is active, and hasn't timed out.
 app.post('/validateUserSession', authenticateToken, (request, response) => {
-    const { username } = request.body; // Username from frontend sessionStorage
+    const userID = request.body?.[userID_alias]; // const { username: userID } = request.body; // Username from frontend sessionStorage
+    const serverSessionUserID = request[userID_alias];    
 
-    // Check if the frontend username matches the token's true owner on the server
-    if (username && username !== request.username) 
-    { return response.status(401).json({ success: false, error: 'Session security violation: Username mismatch. Please sign in again.' }); }
+    // Check if the frontend value matches the token's true owner on the server
+    if (userID && userID !== serverSessionUserID) 
+    { return response.status(401).json({ success: false, error: 'Session security violation: User identifier mismatch. Please sign in again.' }); }
 
-    response.json({ success: true, message: "Session exists", username: request.username });
+    response.json({ success: true, message: "Session exists", [userID_alias]: serverSessionUserID });
 });
 
 app.post('/update/Clients/signIn', (request, response) => {
-    const { email, password } = request.body;
+    const userID = request.body?.[userID_alias]; 
+    const { password } = request.body;
     const db = dbService.getInstance().getClientSRV(); // Note that this function primarily deals with the Clients table
-    const result = db.signInUser(email, password);
+    const result = db.signInUser(userID, password);
 
     result.then(userData => {
         if (userData) 
@@ -122,11 +127,10 @@ app.post('/update/Clients/signIn', (request, response) => {
             while (activeUserSessions.has(token)) { token = crypto.randomUUID(); } // AVOID DUPLICATES
             const now = Date.now();        
 
-            registerSession(token, userData.username, now, userData.role); // Store session with timestamp            
-            
+            registerSession(token, userData.email, now, userData.role); // Store session with timestamp            
             response.json({ success: true, data: userData, token: token, activeTime: now }); 
         } 
-        else { response.status(401).json({ success: false, error: 'Invalid username or password.' }); }
+        else { response.status(401).json({ success: false, error: 'Invalid user ID or password.' }); }
     })
     .catch(err => {
         console.error(err);
@@ -143,10 +147,11 @@ app.post('/update/Clients/signOut', authenticateToken, (request, response) => {
 });
 
 app.post('/insert/Clients', (request, response) => {
-    const { username, password } = request.body;
+    const userID = request.body?.[userID_alias]; 
+    const { password } = request.body;
     const db = dbService.getInstance().getClientSRV(); 
 
-    db.insertNewUser(username, password).then(userData => {
+    db.insertNewUser(userID, password).then(userData => {
         if (userData) 
         {
             let token = crypto.randomUUID();
@@ -154,7 +159,7 @@ app.post('/insert/Clients', (request, response) => {
             const now = Date.now();
             const role = ROLES.CLIENT; // Ana's admin account will always exist prior, so insert does not make sense
 
-            registerSession(token, userData.username, now, role); // Store session with timestamp
+            registerSession(token, userData.email, now, role); // Store session with timestamp
             
             response.json({ success: true, data: userData, token: token, activeTime: now }); 
         } 

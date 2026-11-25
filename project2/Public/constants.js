@@ -1,4 +1,5 @@
 export const tableLimit = 25;
+export const userID_alias = "email"; // Used in the frontend and backend, this indicates the user ID
 export function fixPage(page) { return Math.max(1, parseInt(page, 10) || 1); }
 
 // Not to be used on text box entries
@@ -24,7 +25,7 @@ export const CLIENT_TN = "Client";
 export const CLIENT_TC = Object.freeze({ 
     clientID: "clientID", addressID: "addressID",    
     firstname: "firstname", lastname: "lastname", passwordHash: "passwordHash", password: "passwordHash",
-    phoneNumber: "phoneNumber", email: "email", username: "email",
+    phoneNumber: "phoneNumber", email: userID_alias, username: userID_alias,
     cardNumber: "cardNumber", cardCVV: "cardCVV", cardExpiration: "cardExpiration"
 });
 // #endregion
