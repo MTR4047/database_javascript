@@ -111,9 +111,9 @@ app.post('/validateUserSession', authenticateToken, (request, response) => {
 });
 
 app.post('/update/Clients/signIn', (request, response) => {
-    const { username, password } = request.body;
+    const { email, password } = request.body;
     const db = dbService.getInstance().getClientSRV(); // Note that this function primarily deals with the Clients table
-    const result = db.signInUser(username, password);
+    const result = db.signInUser(email, password);
 
     result.then(userData => {
         if (userData) 
