@@ -109,7 +109,7 @@ CREATE TABLE FlooringRequest (
     clientID           INT           NOT NULL,
     serviceAddressID   INT           NOT NULL,
     preferredStartDate DATE          NOT NULL,
-    preferredEndDate   DATE          NULL,            -- NULL = single date
+    preferredEndDate   DATE          NULL,            -- NULL = single date, TODO: Add submitted at date
     proposedBudget     DECIMAL(10,2) NOT NULL CHECK (proposedBudget > 0),
     notes              TEXT          NULL,
     status             ENUM('submitted','rejected','negotiating','accepted','cancelled','completed')

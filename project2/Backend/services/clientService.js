@@ -6,7 +6,8 @@ export default class ClientService
     updateConnection(connection) { this.#connection = connection; }
 
     // #region CLIENT TABLE
-
+    static CLIENTS_TABLE_NAME = constantsJS.USERS_TABLE_NAME;
+    static CLIENTS_TABLE_COLUMNS = constantsJS.USERS_TABLE_COLUMNS;
 
     // #endregion
 

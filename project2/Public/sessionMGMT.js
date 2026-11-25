@@ -9,7 +9,7 @@ export const SSID_USER_LAST_ACTIVE = 'user-last-active-time';
 
 export const ROLES = Object.freeze({
     CLIENT: "client",
-    ADMIN: "admin"
+    CONTRACTOR: "contractor"
 });
 
 export class SessionMinHeap {
