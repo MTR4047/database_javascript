@@ -121,7 +121,9 @@ app.post('/update/Clients/signIn', (request, response) => {
             let token = crypto.randomUUID();
             while (activeUserSessions.has(token)) { token = crypto.randomUUID(); } // AVOID DUPLICATES
             const now = Date.now();
-            registerSession(token, userData.username, now); // Store session with timestamp            
+            const role = ROLES.CLIENT; // TODO: Make a SQL function which checks for Ana's user ID and then assign role, this would be based on the result
+
+            registerSession(token, userData.username, now, role); // Store session with timestamp            
             
             response.json({ success: true, data: userData, token: token, activeTime: now }); 
         } 
@@ -151,7 +153,9 @@ app.post('/insert/Clients', (request, response) => {
             let token = crypto.randomUUID();
             while (activeUserSessions.has(token)) { token = crypto.randomUUID(); } // AVOID DUPLICATES
             const now = Date.now();
-            registerSession(token, userData.username, now); // Store session with timestamp
+            const role = ROLES.CLIENT; // Ana's admin account will always exist prior, so insert does not make sense
+
+            registerSession(token, userData.username, now, role); // Store session with timestamp
             
             response.json({ success: true, data: userData, token: token, activeTime: now }); 
         } 

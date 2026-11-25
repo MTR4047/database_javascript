@@ -198,6 +198,8 @@ class DbService
             if (!success || success.length === 0) return false; const user = success[0];
             if (!verifyPasswordPBKDF2(transformedPassword, user[USR_TC.password])) {return false;} // It's better to perform sanitization on the frontend, and hashing on the backend; though for this task, we stuck with sanitization in the backend as well
             
+            // Step 3: Add check to see if admin or client
+
             // Step 3: Update sign-in timestamp for the authenticated user
             const updateSuccess = await new Promise((resolve, reject) => {
                 const updateQuery = `UPDATE ${USR_TN} SET ${USR_TC.signintime} = ? WHERE ${USR_TC.username} = ?;`;
