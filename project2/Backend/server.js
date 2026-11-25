@@ -62,7 +62,8 @@ function registerSession(token, email, sessionDate = Date.now(), role = ROLES.CL
 
 function deregisterSession(token)
 {
-    
+    sessionBuckets
+    activeUserSessions.delete(token);   
 }
 
 // Helper to validate incoming tokens on protected endpoints
