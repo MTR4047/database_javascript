@@ -1,4 +1,4 @@
-import { ROOMAREA_TC, ROOMAREA_TN, sanitizeDateValue, sanitizeInteger, sanitizeString } from "../../Public/constants.js";
+import { PHOTO_TC, PHOTO_TN, ROOMAREA_TC, ROOMAREA_TN, sanitizeDateValue, sanitizeInteger, sanitizeString } from "../../Public/constants.js";
 import { DbService } from "../db.js";
 
 /** */
@@ -154,10 +154,33 @@ export default class ProjectRequestService
     // #endregion
 
     // #region PHOTO TABLE
+    static PHOTO_SRV_TN = PHOTO_TN;
+    static PHOTO_SRV_TC = PHOTO_TC;
+    static ALLOWED_PHOTO_COLUMNS_SET = new Set(Object.values(this.PHOTO_SRV_TC));
+    static ALLOWED_PHOTO_UPDATE_SET = (() => {
+        const updateSet = new Set(this.ALLOWED_PHOTO_COLUMNS_SET);
+        updateSet.delete(this.PHOTO_SRV_TC.photoID);
+        return updateSet;
+    })();
+
+    // Helper strictly for pagination on SELECT queries
+    returnOffsetSTMT_Photo(page = 1, sortColumn = ProjectRequestService.PHOTO_SRV_TC.photoID, isAscending = true) 
+    { return DbService.returnOffsetSTMT(page, sortColumn, isAscending); }
 
     // #region HELPER UPDATE FUNCS
-
+    #transformersPhotoMap = new Map([
+        // FK: validate positive integer ID; guard separately if immutable after creation
+        [this.constructor.PHOTO_SRV_TC.requestID, (val) => sanitizeInteger(val, true)],
+        [this.constructor.PHOTO_SRV_TC.filePath, (val) => this.#transformPhotoFilePath(val)]
+    ]);
     
+    #transformPhotoFilePath(val) {
+        if (typeof val !== 'string') return undefined;
+        
+        const trimmed = val.trim();
+        return trimmed.length > 0 ? trimmed : undefined;
+    }
+
     // #endregion HELPER UPDATE FUNCS
 
     // #endregion
