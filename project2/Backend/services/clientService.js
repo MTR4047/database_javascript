@@ -1,4 +1,4 @@
-import { CLIENT_TC, CLIENT_TN, nonAlphanumericRegex, nonNumericRegex, transformToValidInput } from "../../Public/constants.js";
+import { ADDRESS_TC, ADDRESS_TN, CLIENT_TC, CLIENT_TN, nonAlphanumericRegex, nonNumericRegex, sanitizeString } from "../../Public/constants.js";
 import { ROLES as userRoles } from "../../Public/sessionMGMT.js";
 import { DbService } from "../db.js";
 import crypto from 'crypto';
@@ -40,6 +40,10 @@ export default class ClientService
         return updateSet;
     })();
 
+    // Helper strictly for pagination on SELECT queries
+    returnOffsetSTMT_Client(page = 1, sortColumn = ClientService.CLIENT_SRV_TC.clientID, isAscending = true) 
+    { return DbService.returnOffsetSTMT(page, sortColumn, isAscending); }
+
     // #region helper update funcs
     // No need to transform Address ID
     #transformersClientsMap = new Map([
@@ -56,17 +60,17 @@ export default class ClientService
     
     #transformFirstname(val) 
     {
-        val = transformToValidInput(val);
+        val = sanitizeString(val);
         return typeof val === 'string' ? val.trim().substring(0, 256): undefined;
     }
     #transformLastname(val) 
     {
-        val = transformToValidInput(val);
+        val = sanitizeString(val);
         return typeof val === 'string' ? val.trim().substring(0, 256): undefined;
     }
 
     #transformPassword(val, cryptoRun = false) {
-        val = transformToValidInput(val);
+        val = sanitizeString(val);
         if (typeof val !== 'string') return undefined;
 
         const trimmed = val.trim(); 
@@ -77,7 +81,7 @@ export default class ClientService
 
     #transformPhoneNumber(val)
     {
-        val = transformToValidInput(val);
+        val = sanitizeString(val);
         if (typeof val !== 'string') return undefined;
 
         const trimmed = val.replace(nonNumericRegex, "").substring(0, 15); // +1 111-222-3333 is 15 characters
@@ -87,7 +91,7 @@ export default class ClientService
     // We can check using the regex in a later step
     #transformEmail(val) 
     {
-        val = transformToValidInput(val);
+        val = sanitizeString(val);
         if (typeof val !== 'string') return undefined;
         
         const trimmed = val.trim().substring(0, 100).toLowerCase();
@@ -96,7 +100,7 @@ export default class ClientService
 
     #transformCardNumber(val)
     {
-        val = transformToValidInput(val);
+        val = sanitizeString(val);
         if (typeof val !== 'string') return undefined;
 
         const trimmed = val.replace(nonAlphanumericRegex, "").substring(0, 20);
@@ -104,7 +108,7 @@ export default class ClientService
     }
     #transformCVV(val)
     {
-        val = transformToValidInput(val);
+        val = sanitizeString(val);
         if (typeof val !== 'string') return undefined;
 
         const trimmed = val.replace(nonAlphanumericRegex, "").substring(0, 20);
@@ -140,12 +144,8 @@ export default class ClientService
     }
 
     // #endregion HELPER UPDATE FUNCS
-
-    // Private helper strictly for pagination on SELECT queries
-    #returnOffsetSTMT(page = 1, sortColumn = ClientService.CLIENT_SRV_TC.clientID, isAscending = true) 
-    {
-        DbService.returnOffsetSTMT(page, sortColumn, isAscending);
-    }
+    
+    // #region OPERATIONAL FUNCTIONS
 
     async signInUser(email, password)
     {
@@ -216,8 +216,9 @@ export default class ClientService
         catch (error) { console.log(error); return false; }
     }
 
+    /*
     async deleteRowByUserID(email)
-   {
+    {
         try
         {
             const CLIENT_TN = ClientService.CLIENT_SRV_TN; const CLIENT_TC = ClientService.CLIENT_SRV_TC;
@@ -236,12 +237,179 @@ export default class ClientService
             return response === 1 ? true: false;
         }
         catch(error) { console.log(error); return false; }
-   }
+    }
+    */
+
+    async updateDetailsByUserID(data = {}, originalUserID) 
+    {
+        try {
+            const CLIENT_TN = ClientService.CLIENT_SRV_TN; const CLIENT_TC = ClientService.CLIENT_SRV_TC;
+            const setClauses = []; const queryParams = [];
+
+            // For every key value pair given
+            for (const [key, value] of Object.entries(data)) 
+            {
+                // Fast O(1) check against the allowable updatable Set
+                if (ClientService.ALLOWED_CLIENTS_UPDATE_SET.has(key)) 
+                {
+                    // Get precise field transformer or fall back to raw value
+                    const transform = this.#transformersClientsMap.get(key);
+                    const processedValue = transform ? transform(value): value;
+
+                    // Only append valid, successfully parsed attributes
+                    if (processedValue !== undefined) { setClauses.push(`${key} = ?`); queryParams.push(processedValue); }
+                }
+            }
+
+            // If no fields passed validation, abort query execution
+            if (setClauses.length === 0) return false;
+
+            queryParams.push(originalUserID); // The very last ? refers to the username ID
+            const query = `UPDATE ${CLIENT_TN} SET ${setClauses.join(', ')} WHERE ${CLIENT_TC.username} = ?;`;
+
+            const response = await new Promise((resolve, reject) => {
+                this.#connection.query(query, queryParams, (err, result) => {
+                    if (err) reject(new Error(err.message));
+                    else resolve(result.affectedRows);
+                });
+            });
+            
+            console.log(response);
+            return response;
+        } 
+        catch (error) { console.log(error); return false; }
+    }
+
+    // #endregion OPERATIONAL FUNCTIONS
 
     // #endregion
 
     // #region ADDRESS TABLE
+    static ADDRESS_SRV_TN = ADDRESS_TN;
+    static ADDRESS_SRV_TC = ADDRESS_TC;
+    static ALLOWED_ADDRESS_COLUMNS_SET = new Set(Object.values(this.ADDRESS_SRV_TC));
+    static ALLOWED_ADDRESS_UPDATE_SET = (() => {
+        const updateSet = new Set(this.ALLOWED_ADDRESS_COLUMNS_SET);
+        updateSet.delete(this.ADDRESS_SRV_TC.addressID);
+        return updateSet;
+    })();
 
+    static states = new Map([
+        ["AL", "Alabama"], ["AK", "Alaska"], ["AZ", "Arizona"], ["AR", "Arkansas"],
+        ["CA", "California"], ["CO", "Colorado"], ["CT", "Connecticut"], ["DE", "Delaware"],
+        ["FL", "Florida"], ["GA", "Georgia"], ["HI", "Hawaii"],
+        ["ID", "Idaho"], ["IL", "Illinois"], ["IN", "Indiana"], ["IA", "Iowa"],
+        ["KS", "Kansas"], ["KY", "Kentucky"], ["LA", "Louisiana"],
+        ["ME", "Maine"], ["MD", "Maryland"], ["MA", "Massachusetts"], ["MI", "Michigan"],
+        ["MN", "Minnesota"], ["MS", "Mississippi"], ["MO", "Missouri"], ["MT", "Montana"],
+        ["NE", "Nebraska"], ["NV", "Nevada"], ["NH", "New Hampshire"], ["NJ", "New Jersey"],
+        ["NM", "New Mexico"], ["NY", "New York"], ["NC", "North Carolina"], ["ND", "North Dakota"],
+        ["OH", "Ohio"], ["OK", "Oklahoma"], ["OR", "Oregon"], ["PA", "Pennsylvania"],
+        ["RI", "Rhode Island"], ["SC", "South Carolina"], ["SD", "South Dakota"],
+        ["TN", "Tennessee"], ["TX", "Texas"], ["UT", "Utah"],
+        ["VT", "Vermont"], ["VA", "Virginia"],
+        ["WA", "Washington"], ["WV", "West Virginia"], ["WI", "Wisconsin"], ["WY", "Wyoming"],
+
+        ["DC", "District of Columbia"],
+        ["AS", "American Samoa"],
+        ["GU", "Guam"],
+        ["MP", "Northern Mariana Islands"],
+        ["PR", "Puerto Rico"],
+        ["UM", "United States Minor Outlying Islands"],
+        ["VI", "Virgin Islands, U.S."]
+    ]);
+
+    // Helper strictly for pagination on SELECT queries
+    returnOffsetSTMT_Address(page = 1, sortColumn = ClientService.ADDRESS_SRV_TC.addressID, isAscending = true) 
+    { return DbService.returnOffsetSTMT(page, sortColumn, isAscending); }
+
+    // #region helper update funcs
+    // No need to transform Address ID
+    #transformersClientsMap = new Map([
+        [ClientService.ADDRESS_SRV_TC.street, (val) => this.#transformAddressStreet(val) ],
+        [ClientService.ADDRESS_SRV_TC.city, (val) => this.#transformAddressCity(val) ], 
+        [ClientService.ADDRESS_SRV_TC.state, (val) => this.#transformAddressState(val) ], 
+        [ClientService.ADDRESS_SRV_TC.postalCode, (val) => this.#transformAddressPostalCode(val) ]        
+    ]);
+    
+    static addressStreetMaxLen = 100; static addressCityMaxLen = 50;
+    static addressStateMaxLen = 2; static addressPostalCodeMaxLen = 50;
+    #transformAddressStreet(val) 
+    {
+        val = sanitizeString(val);
+        return typeof val === 'string' ? val.trim().substring(0, ClientService.addressStreetMaxLen): undefined; // Max len 100
+    }
+    #transformAddressCity(val) 
+    {
+        val = sanitizeString(val);
+        return typeof val === 'string' ? val.trim().substring(0, ClientService.addressCityMaxLen): undefined; // Max len 50
+    }
+    // Drop down input
+    #transformAddressState(val) 
+    {
+        const normalized = sanitizeString(val);
+        if (typeof normalized !== 'string') { return undefined; }
+
+        const cleaned = normalized.trim().substring(0, ClientService.addressStateMaxLen).toUpperCase(); 
+        if (!cleaned) { return undefined; }
+
+        // Match 2-letter code directly (e.g., "mi" -> "MI", "MI " -> "MI")
+        if (ClientService.states.has(cleaned)) 
+        { return cleaned; }
+
+        return undefined;
+    }
+    #transformAddressPostalCode(val)
+    {
+        val = sanitizeString(val);
+        return typeof val === 'string' ? val.trim().substring(0, ClientService.addressPostalCodeMaxLen): undefined;
+    }
+    
+    // #endregion
+
+    // #region OPERATIONAL FUNCTIONS
+
+    async updateAddressDetailsByAddressID(data = {}, addressID) 
+    {
+        try {
+            const ADDRESS_TN = ClientService.ADDRESS_SRV_TN; const ADDRESS_TC = ClientService.ADDRESS_SRV_TC;
+            const setClauses = []; const queryParams = [];
+
+            // For every key value pair given
+            for (const [key, value] of Object.entries(data)) 
+            {
+                // Fast O(1) check against the allowable updatable Set
+                if (ClientService.ALLOWED_ADDRESS_UPDATE_SET.has(key)) 
+                {
+                    // Get precise field transformer or fall back to raw value
+                    const transform = this.#transformersClientsMap.get(key);
+                    const processedValue = transform ? transform(value): value;
+
+                    // Only append valid, successfully parsed attributes
+                    if (processedValue !== undefined) { setClauses.push(`${key} = ?`); queryParams.push(processedValue); }
+                }
+            }
+
+            // If no fields passed validation, abort query execution
+            if (setClauses.length === 0) return false;
+
+            queryParams.push(addressID); // The very last ? refers to the username ID
+            const query = `UPDATE ${ADDRESS_TN} SET ${setClauses.join(', ')} WHERE ${ADDRESS_TC.addressID} = ?;`;
+
+            const response = await new Promise((resolve, reject) => {
+                this.#connection.query(query, queryParams, (err, result) => {
+                    if (err) reject(new Error(err.message));
+                    else resolve(result.affectedRows);
+                });
+            });
+            
+            console.log(response);
+            return response;
+        }
+        catch (error) { console.log(error); return false; }
+    }
+
+    // #endregion OPERATIONAL FUNCTIONS
 
     // #endregion
 }

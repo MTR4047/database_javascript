@@ -3,16 +3,86 @@ export const userID_alias = "email"; // Used in the frontend and backend, this i
 export function fixPage(page) { return Math.max(1, parseInt(page, 10) || 1); }
 
 // Not to be used on text box entries
-export function transformToValidInput(val) 
+export function sanitizeString(val) 
 {
     if (typeof val !== 'string') return val;
 
-    // Matches specified dangerous/unwanted punctuation: ' " ? ! = ` \ ; < >
+    // Matches specified dangerous/unwanted punctuation: ' " ? ! = ` ; < >
     // Replaces matches with an empty string ''; double protection (as SQL query parameters handle this already)
-    const sanitized = val.replace(/['"?!=`\\;<>]/g, '');
+    const sanitized = val.replace(/['"?!=`;<>]/g, '');
 
     return sanitized;
 };
+
+export function sanitizeDateValue(val)
+{
+    if (val instanceof Date) 
+    { return Number.isNaN(val.getTime()) ? undefined: val; }
+
+    if (typeof val !== 'string' || !val.trim()) return undefined;
+    const parsed = new Date(val.trim()); // To be used on data passed through JSON
+    return Number.isNaN(parsed.getTime()) ? undefined: parsed; 
+}
+
+function sanitizeNumber(val) 
+{
+    if (typeof val !== 'number' && typeof val !== 'string') { return val; }
+
+    if (typeof val === 'string') 
+    {
+        const trimmed = val.trim();     if (trimmed.length === 0) return undefined;
+        const num = Number(trimmed);    return Number.isFinite(num) ? num : val;
+    }
+
+    return Number.isFinite(val) ? val: val;
+}
+export function sanitizeInteger(val, positiveRequired = false) 
+{
+    const sanitized = sanitizeNumber(val);
+    if (typeof sanitized !== 'number' || !Number.isFinite(sanitized)) 
+    { return sanitized; }
+
+    const floored = Math.floor(sanitized);
+    if (positiveRequired && floored <= 0) { return undefined; }
+
+    return floored;
+}
+export function sanitizeDecimal(val, { nonNegative = true } = {}) 
+{
+    const sanitized = sanitizeNumber(val);
+    if (typeof sanitized !== 'number' || !Number.isFinite(sanitized)) 
+    { return sanitized; }
+
+    if (nonNegative && sanitized < 0) 
+    { return undefined; }
+
+    return sanitized;
+}
+
+/*
+static _SRV_TN = CLIENT_TN;
+static _SRV_TC = CLIENT_TC;
+static ALLOWED__COLUMNS_SET = new Set(Object.values(this._SRV_TC));
+static ALLOWED__UPDATE_SET = (() => {
+    const updateSet = new Set(this.ALLOWED__COLUMNS_SET);
+    updateSet.delete(this._SRV_TC.);
+    return updateSet;
+})();
+
+// #region helper update funcs
+// No need to transform Address ID
+#transformersClientsMap = new Map([
+    [Service.CLIENT_SRV_TC.addressID, (val) => val ],
+    [Service.CLIENT_SRV_TC.firstname, (val) => this.#(val) ], 
+    [Service.CLIENT_SRV_TC.lastname, (val) => this.#(val) ], 
+    [Service.CLIENT_SRV_TC.passwordHash, (val) => this.#(val, true) ], 
+    [Service.CLIENT_SRV_TC.phoneNumber, (val) => this.#(val) ], 
+    [Service.CLIENT_SRV_TC.email, (val) => this.#(val) ], 
+    [Service.CLIENT_SRV_TC.cardNumber, (val) => this.#(val) ],
+    [Service.CLIENT_SRV_TC.cardCVV, (val) => this.#(val) ],
+    [Service.CLIENT_SRV_TC.cardExpiration, (val) => this.#(val) ]
+]);
+*/
 
 // #region CLIENTS, ADDRESS
 
@@ -105,7 +175,7 @@ export const ROOMAREA_TC = Object.freeze({
 // #region QUOTES and QUOTE ITEMS
 
 // #region QUOTE TABLE
-export const QUOTE_TN = "Client";
+export const QUOTE_TN = "Quote";
 export const QUOTE_TC = Object.freeze({ 
     quoteID: "quoteID", requestID: "requestID", /** FK */
     createdAt: "createdAt", acceptedAt: "acceptedAt",

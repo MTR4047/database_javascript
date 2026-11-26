@@ -24,7 +24,7 @@ import FinancialSRV from './services/financialService';
 import { tableLimit } from '../Public/constants';
 
 let instance = null;
-class DbService 
+export class DbService 
 {
     // Each SRV here holds a specific compartmentalized "micro service" which handles its own table primarily
     // Cross table edits and searches are handled in this master DbService

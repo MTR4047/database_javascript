@@ -5,7 +5,7 @@ import cors from 'cors';
 import crypto from 'crypto'; // Session tokensss
 import dotenv from 'dotenv';
 import dbService from './db.js'; // Monolithic DBService that hosts compartmentalized services
-import { SESSION_TIMEOUT_MS, UPDATE_THRESHOLD_MS, CHECK_INTERVAL_MS, BUCKET_MS, SessionExpirationBuckets, ROLES, SSID_USER_TOKEN } from '../Public/sessionMGMT.js';
+import { SESSION_TIMEOUT_MS, UPDATE_THRESHOLD_MS, CHECK_INTERVAL_MS, BUCKET_MS, SessionExpirationBuckets, ROLES, SSID_USER_TOKEN, SSID_USER_ID } from '../Public/sessionMGMT.js';
 import { userID_alias } from '../Public/constants.js';
 
 dotenv.config();
@@ -97,7 +97,7 @@ function authenticateToken(request, response, next)
 
     // Note that, if we have authenticate token as "parameter" on the endpoint, it becomes a middleware function!!
     // Attach using the shared alias ("email") and extract the identifier value from `session`
-    request[userID_alias] = session[userID_alias] ?? session.email ?? session.username;
+    request[userID_alias] = session[userID_alias] ?? session.email;
     
     next();
 }
@@ -179,9 +179,10 @@ app.post('/insert/Clients', (request, response) => {
 
 /* Here, on the app.js, we have to pass something like fetch(http://localhost:5050/delete/Users/${username}),  
 { method: 'DELETE', headers: { 'user-session-token': sessionToken }, body: JSON.stringify({username: username}) }).then
-*/
+*/ // However, we will not utilise this
 app.delete('/delete/Clients', authenticateToken, (request, response) => 
 {
+    /*
     const userID = request.body?.[userID_alias]; console.log("delete " + userID);   
     const serverSessionUserID = request[userID_alias];
     
@@ -201,6 +202,7 @@ app.delete('/delete/Clients', authenticateToken, (request, response) =>
         console.error('Database deletion error:', err);
         response.status(500).json({ success: false, error: 'Database deletion failed.' });
     });
+    */
 });
 
 // #endregion Authentication
@@ -226,10 +228,11 @@ fetch('http://localhost:5050/update/Clients', {
     method: 'PATCH',
     headers: {
         'Content-Type': 'application/json',
-        'user-session-token': sessionToken
+        'user-session-token': sessionToken,
+        'user-id-name': email // email is editable! So we must pass this as a header
     },
     body: JSON.stringify({
-        username: 'johndoe',   // Checked against request.username
+        email: 'johndoe',   // Checked against request.email, only sent if it's to be edited
         firstname: 'Jane',     // Extracted into updateData
         lastname: 'Smith'      // Extracted into updateData
     })
@@ -237,26 +240,47 @@ fetch('http://localhost:5050/update/Clients', {
 .then(res => res.json())
 .then(data => console.log(data));
 */
-app.patch('/update/Clients', authenticateToken, (request, response) =>
-{
+app.patch('/update/Clients', authenticateToken, (request, response) => {
     console.log("app: Clients update is called");
 
-    // Neat thing we can do here because the backend function filters every invalid data call anyway 
-    const { username, ...updateData } = request.body;    
-    // const username = request.body.username;
+    const serverSessionUserID = request[userID_alias];
+    const headerUserID = request.headers[SSID_USER_ID]?.trim().toLowerCase();
 
-    const authUser = request.username;
-    if (username !== authUser) 
-    { return response.status(403).json({ success: false, error: 'User must be authenticated and can only update their own records.' }); }
+    if (typeof serverSessionUserID !== 'string' || serverSessionUserID.trim() === '' || !headerUserID || headerUserID !== serverSessionUserID.trim().toLowerCase()) 
+    { return response.status(403).json({ success: false, error: 'User must be authenticated and provide their current user ID in the header.' }); }
+
+    const updateData = { ...(request.body ?? {}) };
+    if (Object.keys(updateData).length === 0) 
+    { return response.status(400).json({ success: false, error: 'No update fields provided.' }); }
 
     const db = dbService.getInstance().getClientSRV();
-    const result = db.updateDetailsByUsername(updateData, username);
+    const result = db.updateDetailsByUserID(updateData, serverSessionUserID)
 
-    result.then(data => {
-        // updateDetailsByUsername returns the number of rows updated, or false if the update failed
-        if (data) response.json({ success: true });
-        else response.status(400).json({ success: false, error: 'Profile could not be updated. Check the values and try again.' });
-    }).catch(err => { console.log(err); response.status(500).json({ success: false, error: 'Server error during profile update.' }); });
+    result.then((updatedRows) => {
+        if (!updatedRows) 
+        { return response.status(400).json({ success: false, error: 'Profile could not be updated. Check the values and try again.' }); }
+
+        const normalizedCurrentEmail = serverSessionUserID.trim().toLowerCase();
+        const requestedNewEmail = typeof updateData[userID_alias] === 'string' ? updateData[userID_alias].trim().toLowerCase(): '';
+        const emailChanged = Boolean(requestedNewEmail && requestedNewEmail !== normalizedCurrentEmail);
+        const finalEmail = emailChanged ? requestedNewEmail : serverSessionUserID;
+
+        if (emailChanged) 
+        {
+            const token = request.headers[SSID_USER_TOKEN];
+            if (token && activeUserSessions?.has(token)) 
+            {
+                const session = activeUserSessions.get(token);
+                session[userID_alias] = finalEmail;
+            }
+        }
+
+        return response.json({ success: true, [userID_alias]: finalEmail, userIDChanged: emailChanged });
+    })
+    .catch((err) => {
+        console.error('PATCH /update/Clients error:', err);
+        return response.status(500).json({ success: false, error: 'Server error during profile update.' });
+    });
 });
 
 // #region OTHER READ OPERATIONS
