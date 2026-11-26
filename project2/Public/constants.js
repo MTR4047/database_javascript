@@ -3,16 +3,25 @@ export const userID_alias = "email"; // Used in the frontend and backend, this i
 export function fixPage(page) { return Math.max(1, parseInt(page, 10) || 1); }
 
 // Not to be used on text box entries
-export function sanitizeString(val) 
+export function sanitizeString(val, limit) 
 {
     if (typeof val !== 'string') return val;
 
+    const limited = limitString(val, limit);
+    if (typeof limited !== 'string') return limited;
+
     // Matches specified dangerous/unwanted punctuation: ' " ? ! = ` ; < >
     // Replaces matches with an empty string ''; double protection (as SQL query parameters handle this already)
-    const sanitized = val.replace(/['"?!=`;<>]/g, '');
-
-    return sanitized;
+    return limited.replace(/['"?!=`;<>]/g, '');
 };
+
+export function limitString(val, limit = 255)
+{
+    if (typeof val !== 'string' || typeof limit !== 'number') return val;
+    
+    limit = (isFinite(limit) && limit > 0) ? limit: val.length;
+    return val.trim().substring(0, limit);
+}
 
 export function sanitizeDateValue(val)
 {
@@ -94,7 +103,7 @@ export const nonNumericRegex = /[^0-9]/gi;
 export const CLIENT_TN = "Client";
 export const CLIENT_TC = Object.freeze({ 
     clientID: "clientID", addressID: "addressID",    
-    firstname: "firstname", lastname: "lastname", passwordHash: "passwordHash", password: "passwordHash",
+    firstname: "firstName", lastname: "lastName", passwordHash: "passwordHash", password: "passwordHash",
     phoneNumber: "phoneNumber", email: userID_alias, username: userID_alias,
     cardNumber: "cardNumber", cardCVV: "cardCVV", cardExpiration: "cardExpiration"
 });
@@ -160,7 +169,7 @@ export const PHOTO_TC = Object.freeze({
 // #endregion
 
 // #region ROOM AREA TABLE
-export const ROOMAREA_TN = "Photo";
+export const ROOMAREA_TN = "RoomArea";
 export const ROOMAREA_TC = Object.freeze({
     requestID: "requestID", /** FK */ patternName: "patternName", /** FK */
     roomName: "roomName", squareFootage: "squareFootage", 

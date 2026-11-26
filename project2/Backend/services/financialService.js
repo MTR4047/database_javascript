@@ -1,4 +1,4 @@
-import { BILL_ITEM_TC, BILL_ITEM_TN, BILL_TC, BILL_TN, INSTALLATION_ORDER_TC, INSTALLATION_ORDER_TN, NEGOTIATION_TC, NEGOTIATION_TN, QUOTE_ITEM_TC, QUOTE_ITEM_TN, QUOTE_TC, QUOTE_TN, sanitizeDateValue, sanitizeDecimal, sanitizeInteger, sanitizeString } from "../../Public/constants.js";
+import { BILL_ITEM_TC, BILL_ITEM_TN, BILL_TC, BILL_TN, INSTALLATION_ORDER_TC, INSTALLATION_ORDER_TN, NEGOTIATION_TC, NEGOTIATION_TN, PAYMENT_TC, PAYMENT_TN, QUOTE_ITEM_TC, QUOTE_ITEM_TN, QUOTE_TC, QUOTE_TN, sanitizeDateValue, sanitizeDecimal, sanitizeInteger, sanitizeString } from "../../Public/constants.js";
 import { ROLES } from "../../Public/sessionMGMT.js";
 import { DbService } from "../db.js";
 
@@ -24,7 +24,11 @@ export default class FinancialService
     static ALLOWED_QUOTE_ITEMS_COLUMNS_SET = new Set(Object.values(this.QUOTE_ITEM_SRV_TC));
     static ALLOWED_QUOTE_ITEMS_UPDATE_SET = (() => {
         const updateSet = new Set(this.ALLOWED_QUOTE_ITEMS_COLUMNS_SET);
+        // Composite key (quoteID, lineNumber) and STORED generated columns are not directly updatable
         updateSet.delete(this.QUOTE_ITEM_SRV_TC.quoteID);
+        // updateSet.delete(this.QUOTE_ITEM_SRV_TC.lineNumber);
+        updateSet.delete(this.QUOTE_ITEM_SRV_TC.quantity);
+        updateSet.delete(this.QUOTE_ITEM_SRV_TC.lineTotal);
         return updateSet;
     })();
 
@@ -37,30 +41,32 @@ export default class FinancialService
     // #region HELPER UPDATE FUNCS
     #transformersQuotesMap = new Map([
         // FK: typically validated/passed through or guarded separately if immutable
-        [QuoteService.QUOTE_SRV_TC.requestID, (val) => val],
-        [QuoteService.QUOTE_SRV_TC.createdAt, (val) => sanitizeDateValue(val)],
-        [QuoteService.QUOTE_SRV_TC.acceptedAt, (val) => sanitizeDateValue(val)],
-        [QuoteService.QUOTE_SRV_TC.proposedStartDate, (val) => sanitizeDateValue(val)],
-        [QuoteService.QUOTE_SRV_TC.proposedEndDate, (val) => this.#transformProposedEndDate(val)],
-        [QuoteService.QUOTE_SRV_TC.note, (val) => this.#transformNote(val)],
-        [QuoteService.QUOTE_SRV_TC.status, (val) => this.#transformQuoteStatus(val)]
+        [FinancialService.QUOTE_SRV_TC.requestID, (val) => sanitizeInteger(val, true)],
+        [FinancialService.QUOTE_SRV_TC.createdAt, (val) => sanitizeDateValue(val)],
+        [FinancialService.QUOTE_SRV_TC.acceptedAt, (val) => this.#transformNullableDate(val)],
+        [FinancialService.QUOTE_SRV_TC.proposedStartDate, (val) => sanitizeDateValue(val)],
+        [FinancialService.QUOTE_SRV_TC.proposedEndDate, (val) => this.#transformNullableDate(val)],
+        [FinancialService.QUOTE_SRV_TC.note, (val) => this.#transformNote(val)],
+        [FinancialService.QUOTE_SRV_TC.status, (val) => this.#transformQuoteStatus(val)]
     ]);
 
-    #transformProposedEndDate(val) {
-        // Normalize date input (YYYY-MM-DD or Date) into valid date string/Date, or return undefined
+    #transformNullableDate(val) {
         if (val === null) return null;
-        return sanitizeDateValue(val); // Proposed end date is nullable
+        return sanitizeDateValue(val);
     }
 
-    #transformNote(val) {
-        // Sanitize/trim quote note text; return undefined if invalid type
-        val = sanitizeString(val);
-        return typeof val === 'string' ? val.trim(): undefined;
+    #transformNote(val) 
+    {
+        if (val === null) return null; // Note is nullable
+        if (typeof val !== 'string') return undefined;
+        
+        const trimmed = val.trim();
+        return trimmed.length > 0 ? trimmed: null;
     }
 
     static quoteStatuses = new Set([ 'pending', 'countered', 'accepted', 'rejected', 'cancelled', 'superseded']);
     #transformQuoteStatus(val) {
-        // Normalize and validate against allowed quote statuses (e.g., pending, accepted, rejected, expired)
+        // Normalize and validate against allowed quote statuses 
         val = sanitizeString(val);
         if (typeof val !== 'string') { return undefined; }
 
@@ -68,31 +74,39 @@ export default class FinancialService
         return FinancialService.quoteStatuses.has(status) ? status: undefined;
     }
 
-    #transformersQuoteItemsMap = new Map([       
-        [FinancialService.QUOTE_ITEM_SRV_TC.productID, (val) => val],  // FKs: pass through or guard separately if immutable
+    #transformersQuoteItemsMap = new Map([
+        // Nullable FK: material items require productID per chk_qitem_product; non-material items may pass null
+        [FinancialService.QUOTE_ITEM_SRV_TC.productID, (val) => this.#transformNullableID(val)],
         [FinancialService.QUOTE_ITEM_SRV_TC.lineNumber, (val) => sanitizeInteger(val, true)],
         [FinancialService.QUOTE_ITEM_SRV_TC.itemType, (val) => this.#transformItemType(val)],
         [FinancialService.QUOTE_ITEM_SRV_TC.description, (val) => this.#transformQuoteItemDescription(val)],
-        [FinancialService.QUOTE_ITEM_SRV_TC.baseQuantity, (val) => sanitizeDecimal(val)],
-        [FinancialService.QUOTE_ITEM_SRV_TC.quantity, (val) => sanitizeDecimal(val)],
-        [FinancialService.QUOTE_ITEM_SRV_TC.unitPrice, (val) => sanitizeDecimal(val)],
-        [FinancialService.QUOTE_ITEM_SRV_TC.wastePct, (val) => sanitizeDecimal(val)],
-        [FinancialService.QUOTE_ITEM_SRV_TC.lineTotal, (val) => sanitizeDecimal(val)]
+        [FinancialService.QUOTE_ITEM_SRV_TC.baseQuantity, (val) => sanitizeDecimal(val, true)],        
+        [FinancialService.QUOTE_ITEM_SRV_TC.unitPrice, (val) => sanitizeDecimal(val, false)],
+        [FinancialService.QUOTE_ITEM_SRV_TC.wastePct, (val) => sanitizeDecimal(val, true)]
     ]);
 
-    static quoteItemTypes = new Set(['material','removal','labor','underlayment','trim','stairs','delivery','charge','discount']);
+    static quoteItemTypes = new Set(['material', 'removal', 'labor', 'underlayment', 'trim', 'stairs', 'delivery', 'charge', 'discount']);
     #transformItemType(val) 
     {
         val = sanitizeString(val);
         if (typeof val !== 'string') return undefined;
+
         const itemType = val.trim().toLowerCase();
-        return FinancialService.quoteItemTypes.has(itemType) ? itemType: undefined;
+        return FinancialService.quoteItemTypes.has(itemType) ? itemType : undefined;
     }
+
     #transformQuoteItemDescription(val)
     {
         if (typeof val !== 'string') return undefined;
         const trimmed = val.trim();
         return trimmed.length > 0 ? trimmed: undefined;
+    }
+
+    #transformNullableID(val) 
+    {
+        if (val === null) return null;
+        if (val === undefined) return undefined;
+        return sanitizeInteger(val, true);
     }
 
     // #endregion
@@ -134,26 +148,18 @@ export default class FinancialService
     
     // #region HELPER UPDATE FUNCS
     #transformersInstallationOrderMap = new Map([
-        [InstallationOrderService.INSTALLATION_ORDER_SRV_TC.quoteID, (val) => sanitizeInteger(val, true)],  // FK (UNIQUE): pass through or guard separately if immutable after creation
-        [InstallationOrderService.INSTALLATION_ORDER_SRV_TC.actualInstallationDate, (val) => this.#transformInstallationDate(val)],
-        [InstallationOrderService.INSTALLATION_ORDER_SRV_TC.completionDate, (val) => this.#transformInstallationDate(val)],
-        [InstallationOrderService.INSTALLATION_ORDER_SRV_TC.completionNotes, (val) => this.#transformCompletionNotes(val)],
-        [InstallationOrderService.INSTALLATION_ORDER_SRV_TC.status, (val) => this.#transformInstallationOrderStatus(val)]
+        // FK (UNIQUE): pass through or guard separately if immutable after creation
+        [FinancialService.INSTALLATION_ORDER_SRV_TC.quoteID, (val) => sanitizeInteger(val, true)],
+        [FinancialService.INSTALLATION_ORDER_SRV_TC.actualInstallationDate, (val) => this.#transformNullableDate(val)],
+        [FinancialService.INSTALLATION_ORDER_SRV_TC.completionDate, (val) => this.#transformNullableDate(val)],
+        [FinancialService.INSTALLATION_ORDER_SRV_TC.completionNotes, (val) => this.#transformCompletionNotes(val)],
+        [FinancialService.INSTALLATION_ORDER_SRV_TC.status, (val) => this.#transformInstallationOrderStatus(val)]
     ]);
-
-    #transformInstallationDate(val) 
-    {
-        // Allow clearing optional nullable dates when null is explicitly passed
-        if (val === null) return null;
-        return sanitizeDateValue(val);
-    }
 
     #transformCompletionNotes(val) 
     {
         if (val === null) return null;
-
-        val = sanitizeString(val);
-        if (typeof val !== 'string') return undefined;
+        if (typeof val !== 'string') return undefined;        
 
         const trimmed = val.trim();
         return trimmed.length > 0 ? trimmed: null;
@@ -169,8 +175,8 @@ export default class FinancialService
     }
 
     #transformersOrderMaterialUsageMap = new Map([
-        [ORDER_MATERIAL_USAGE_TC.installedSqFt, (val) => sanitizeDecimal(val, true)],
-        [ORDER_MATERIAL_USAGE_TC.actualQuantityUsed, (val) => sanitizeDecimal(val, true)]
+        [FinancialService.ORDER_MATERIAL_USAGE_SRV_TC.installedSqFt, (val) => sanitizeDecimal(val, true)],
+        [FinancialService.ORDER_MATERIAL_USAGE_SRV_TC.actualQuantityUsed, (val) => sanitizeDecimal(val, true)]
     ]);
 
     // #endregion HELPER UPDATE FUNCS
@@ -212,10 +218,10 @@ export default class FinancialService
     returnOffsetSTMT_BillItem(page = 1, sortColumn = FinancialService.BILL_ITEM_SRV_TC.lineNumber, isAscending = true) 
     { return DbService.returnOffsetSTMT(page, sortColumn, isAscending); }
 
-    // #region HELPER UPDATE FUNCS
-    #transformersBillsMap = new Map([    
-        [FinancialService.BILL_SRV_TC.orderID, (val) => val], // FK: pass through or guard separately if immutable after creation
-        [FinancialService.BILL_SRV_TC.generatedAt, (val) => transformDateValue(val)],
+    // #region HELPER UPDATE FUNCS    
+    #transformersBillsMap = new Map([        
+        [FinancialService.BILL_SRV_TC.orderID, (val) => sanitizeInteger(val, true)], // FK: guard separately if immutable after creation
+        [FinancialService.BILL_SRV_TC.generatedAt, (val) => sanitizeDateValue(val)],
         [FinancialService.BILL_SRV_TC.status, (val) => this.#transformBillStatus(val)]
     ]);
     
@@ -224,8 +230,9 @@ export default class FinancialService
     {
         val = sanitizeString(val);
         if (typeof val !== 'string') return undefined;
+
         const status = val.trim().toLowerCase();
-        return FinancialService.billStatuses.has(status) ? status : undefined;
+        return FinancialService.billStatuses.has(status) ? status: undefined;
     }
 
     #transformersBillItemsMap = new Map([
@@ -238,7 +245,7 @@ export default class FinancialService
     static billItemTypes = new Set([ 'material', 'removal', 'labor', 'underlayment', 'trim', 'stairs', 'delivery', 'additional_material', 'subfloor_repair', 'additional_labor', 'upgrade', 'charge', 'discount', 'credit' ]);
     #transformBillItemType(val) 
     {
-        val = transformToValidInput(val);
+        val = sanitizeString(val);
         if (typeof val !== 'string') return undefined;
 
         const itemType = val.trim().toLowerCase();
@@ -247,7 +254,6 @@ export default class FinancialService
 
     #transformBillItemDescription(val) 
     {
-        val = transformToValidInput(val);
         if (typeof val !== 'string') return undefined;
 
         const trimmed = val.trim();
@@ -284,16 +290,9 @@ export default class FinancialService
         [FinancialService.NEGOTIATION_SRV_TC.quoteID, (val) => this.#transformNullableID(val)],
         [FinancialService.NEGOTIATION_SRV_TC.billID, (val) => this.#transformNullableID(val)],
         [FinancialService.NEGOTIATION_SRV_TC.sender, (val) => this.#transformNegotiationSender(val)],
-        [FinancialService.NEGOTIATION_SRV_TC.createdAt, (val) => transformDateValue(val)],
+        [FinancialService.NEGOTIATION_SRV_TC.createdAt, (val) => sanitizeDateValue(val)],
         [FinancialService.NEGOTIATION_SRV_TC.messageText, (val) => this.#transformNegotiationMessage(val)]
     ]);
-
-    #transformNullableID(val) 
-    {
-        if (val === null) return null;
-        if (val === undefined) return undefined;
-        return sanitizeInteger(val, true);
-    }
 
     #transformNegotiationSender(val) 
     {
@@ -307,7 +306,8 @@ export default class FinancialService
     #transformNegotiationMessage(val) 
     {
         if (typeof val !== 'string') return undefined;
-        const val = val.trim();
+        
+        val = val.trim();
         return val.length > 0 ? val: undefined;
     }
     // #endregion HELPER UPDATE FUNCS

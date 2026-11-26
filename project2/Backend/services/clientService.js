@@ -1,4 +1,4 @@
-import { ADDRESS_TC, ADDRESS_TN, CLIENT_TC, CLIENT_TN, nonAlphanumericRegex, nonNumericRegex, sanitizeString } from "../../Public/constants.js";
+import { ADDRESS_TC, ADDRESS_TN, CLIENT_TC, CLIENT_TN, limitString, nonAlphanumericRegex, nonNumericRegex, sanitizeDateValue, sanitizeString } from "../../Public/constants.js";
 import { ROLES as userRoles } from "../../Public/sessionMGMT.js";
 import { DbService } from "../db.js";
 import crypto from 'crypto';
@@ -40,6 +40,16 @@ export default class ClientService
         return updateSet;
     })();
 
+    static CLIENT_SRV_STR_LIMITS = Object.freeze({
+        [this.CLIENT_SRV_TC.firstname]: 50,
+        [this.CLIENT_SRV_TC.lastname]: 50,
+        [this.CLIENT_SRV_TC.passwordHash]: 255,
+        [this.CLIENT_SRV_TC.phoneNumber]: 50,
+        [this.CLIENT_SRV_TC.email]: 100,
+        [this.CLIENT_SRV_TC.cardNumber]: 50,
+        [this.CLIENT_SRV_TC.cardCVV]: 50
+    });
+
     // Helper strictly for pagination on SELECT queries
     returnOffsetSTMT_Client(page = 1, sortColumn = ClientService.CLIENT_SRV_TC.clientID, isAscending = true) 
     { return DbService.returnOffsetSTMT(page, sortColumn, isAscending); }
@@ -48,99 +58,81 @@ export default class ClientService
     // No need to transform Address ID
     #transformersClientsMap = new Map([
         [ClientService.CLIENT_SRV_TC.addressID, (val) => val ],
-        [ClientService.CLIENT_SRV_TC.firstname, (val) => this.#transformFirstname(val) ], 
-        [ClientService.CLIENT_SRV_TC.lastname, (val) => this.#transformLastname(val) ], 
+        
+        [ClientService.CLIENT_SRV_TC.firstname, 
+            (val) => this.#transformName(val, ClientService.CLIENT_SRV_STR_LIMITS.firstname) 
+        ], 
+        [ClientService.CLIENT_SRV_TC.lastname, 
+            (val) => this.#transformName(val, ClientService.CLIENT_SRV_STR_LIMITS.lastname) 
+        ], 
+        
         [ClientService.CLIENT_SRV_TC.passwordHash, (val) => this.#transformPassword(val, true) ], 
-        [ClientService.CLIENT_SRV_TC.phoneNumber, (val) => this.#transformPhoneNumber(val) ], 
-        [ClientService.CLIENT_SRV_TC.email, (val) => this.#transformEmail(val) ], 
-        [ClientService.CLIENT_SRV_TC.cardNumber, (val) => this.#transformCardNumber(val) ],
-        [ClientService.CLIENT_SRV_TC.cardCVV, (val) => this.#transformCVV(val) ],
-        [ClientService.CLIENT_SRV_TC.cardExpiration, (val) => this.#transformCardExpiry(val) ]
+        
+        [ClientService.CLIENT_SRV_TC.phoneNumber, 
+            (val) => this.#transformPhoneNumber(val, ClientService.CLIENT_SRV_STR_LIMITS.phoneNumber) 
+        ], 
+        [ClientService.CLIENT_SRV_TC.email, 
+            (val) => this.#transformEmail(val, ClientService.CLIENT_SRV_STR_LIMITS.email) 
+        ], 
+        [ClientService.CLIENT_SRV_TC.cardNumber, 
+            (val) => this.#transformCardNumber(val, ClientService.CLIENT_SRV_STR_LIMITS.cardNumber) 
+        ],
+        [ClientService.CLIENT_SRV_TC.cardCVV, 
+            (val) => this.#transformCVV(val, ClientService.CLIENT_SRV_STR_LIMITS.cardCVV) 
+        ],
+        
+        [ClientService.CLIENT_SRV_TC.cardExpiration, (val) => sanitizeDateValue(val) ]
     ]);
     
-    #transformFirstname(val) 
+    #transformName(val, limit)
     {
-        val = sanitizeString(val);
-        return typeof val === 'string' ? val.trim().substring(0, 256): undefined;
-    }
-    #transformLastname(val) 
-    {
-        val = sanitizeString(val);
-        return typeof val === 'string' ? val.trim().substring(0, 256): undefined;
+        val = sanitizeString(val, limit);
+        return typeof val === 'string' ? val: undefined;
     }
 
     #transformPassword(val, cryptoRun = false) {
-        val = sanitizeString(val);
         if (typeof val !== 'string') return undefined;
 
-        const trimmed = val.trim(); 
+        const trimmed = limitString(val, ClientService.CLIENT_SRV_STR_LIMITS.passwordHash); 
         if (trimmed.length < 8) return undefined;
         
         return cryptoRun === true ? hashPasswordPBKDF2(trimmed): trimmed;
     }
 
-    #transformPhoneNumber(val)
+    #transformPhoneNumber(val, limit)
     {
-        val = sanitizeString(val);
+        val = sanitizeString(val, limit);
         if (typeof val !== 'string') return undefined;
 
-        const trimmed = val.replace(nonNumericRegex, "").substring(0, 15); // +1 111-222-3333 is 15 characters
-        return trimmed.length >= 10 ? trimmed: undefined;
+        const numeric = val.replace(nonNumericRegex, ""); // +1 111-222-3333 is 15 characters
+        return numeric.length >= 10 ? numeric: undefined;
     }
     
     // We can check using the regex in a later step
-    #transformEmail(val) 
+    #transformEmail(val, limit) 
     {
-        val = sanitizeString(val);
+        val = sanitizeString(val, limit);
         if (typeof val !== 'string') return undefined;
         
-        const trimmed = val.trim().substring(0, 100).toLowerCase();
+        const trimmed = val.toLowerCase();
         return trimmed.length >= 2 ? trimmed: undefined;
     }
 
-    #transformCardNumber(val)
+    #transformCardNumber(val, limit)
     {
-        val = sanitizeString(val);
+        val = sanitizeString(val, limit);
         if (typeof val !== 'string') return undefined;
 
-        const trimmed = val.replace(nonAlphanumericRegex, "").substring(0, 20);
-        return trimmed.length >= 3 ? trimmed: undefined;
+        const alphanumeric = val.replace(nonAlphanumericRegex, "");
+        return alphanumeric.length >= 3 ? alphanumeric: undefined;
     }
-    #transformCVV(val)
+    #transformCVV(val, limit)
     {
-        val = sanitizeString(val);
+        val = sanitizeString(val, limit);
         if (typeof val !== 'string') return undefined;
 
-        const trimmed = val.replace(nonAlphanumericRegex, "").substring(0, 20);
-        return trimmed.length >= 3 ? trimmed: undefined;
-    }
-    #transformCardExpiry(val)
-    {
-        if (val instanceof Date) 
-        { return Number.isNaN(val.getTime()) ? undefined : val; }
-
-        if (typeof val !== 'string') 
-        { return undefined; }
-
-        // Split on '/' or '-' (handles MM/YY, MM/YYYY, MM-YY, MM-YYYY)
-        const parts = trimmed.split(/[/-]/);
-        if (parts.length !== 2) { return undefined; }
-        const [rawMonth, rawYear] = parts.map((p) => p.trim());
-
-        // Ensure strictly numeric parts
-        if (!/^\d{1,2}$/.test(rawMonth) || !/^\d{2,4}$/.test(rawYear)) { return undefined; }
-
-        const month = Number.parseInt(rawMonth, 10);
-        let year = Number.parseInt(rawYear, 10);
-        if (month < 1 || month > 12) { return undefined; }
-
-        // Normalize 2-digit year (e.g., "28" -> 2028)
-        if (rawYear.length === 2) { year += 2000; } 
-        else if (rawYear.length !== 4) { return undefined; }
-        
-        // Construct a Date (end of month)
-        const date = new Date(Date.UTC(year, month - 1, 0));
-        return Number.isNaN(date.getTime()) ? undefined: date;
+        const alphanumeric = val.replace(nonAlphanumericRegex, "");
+        return alphanumeric.length >= 3 ? alphanumeric: undefined;
     }
 
     // #endregion HELPER UPDATE FUNCS
@@ -294,6 +286,13 @@ export default class ClientService
         return updateSet;
     })();
 
+    static ADDRESS_SRV_STR_LIMITS = Object.freeze({
+        [this.ADDRESS_SRV_TC.street]: 100,
+        [this.ADDRESS_SRV_TC.city]: 50,
+        [this.ADDRESS_SRV_TC.state]: 2,
+        [this.ADDRESS_SRV_TC.postalCode]: 50
+    });
+
     static states = new Map([
         ["AL", "Alabama"], ["AK", "Alaska"], ["AZ", "Arizona"], ["AR", "Arkansas"],
         ["CA", "California"], ["CO", "Colorado"], ["CT", "Connecticut"], ["DE", "Delaware"],
@@ -317,7 +316,7 @@ export default class ClientService
         ["PR", "Puerto Rico"],
         ["UM", "United States Minor Outlying Islands"],
         ["VI", "Virgin Islands, U.S."]
-    ]);
+    ]);    
 
     // Helper strictly for pagination on SELECT queries
     returnOffsetSTMT_Address(page = 1, sortColumn = ClientService.ADDRESS_SRV_TC.addressID, isAscending = true) 
@@ -325,44 +324,50 @@ export default class ClientService
 
     // #region helper update funcs
     // No need to transform Address ID
-    #transformersClientsMap = new Map([
-        [ClientService.ADDRESS_SRV_TC.street, (val) => this.#transformAddressStreet(val) ],
-        [ClientService.ADDRESS_SRV_TC.city, (val) => this.#transformAddressCity(val) ], 
-        [ClientService.ADDRESS_SRV_TC.state, (val) => this.#transformAddressState(val) ], 
-        [ClientService.ADDRESS_SRV_TC.postalCode, (val) => this.#transformAddressPostalCode(val) ]        
+    #transformersAddressMap = new Map([
+        [ClientService.ADDRESS_SRV_TC.street, 
+            (val) => this.#transformAddressStreet(val, ClientService.ADDRESS_SRV_STR_LIMITS.street)
+        ],
+        [ClientService.ADDRESS_SRV_TC.city, 
+            (val) => this.#transformAddressCity(val, ClientService.ADDRESS_SRV_STR_LIMITS.city)
+        ],
+        [ClientService.ADDRESS_SRV_TC.state, 
+            (val) => this.#transformAddressState(val, ClientService.ADDRESS_SRV_STR_LIMITS.state)
+        ],
+        [ClientService.ADDRESS_SRV_TC.postalCode, 
+            (val) => this.#transformAddressPostalCode(val, ClientService.ADDRESS_SRV_STR_LIMITS.postalCode)
+        ]
     ]);
     
-    static addressStreetMaxLen = 100; static addressCityMaxLen = 50;
-    static addressStateMaxLen = 2; static addressPostalCodeMaxLen = 50;
-    #transformAddressStreet(val) 
+    #transformAddressStreet(val, limit) 
     {
-        val = sanitizeString(val);
-        return typeof val === 'string' ? val.trim().substring(0, ClientService.addressStreetMaxLen): undefined; // Max len 100
+        val = sanitizeString(val, limit);
+        if (typeof val !== 'string') return undefined;
+
+        return val.length > 0 ? val: undefined;
     }
-    #transformAddressCity(val) 
+    #transformAddressCity(val, limit) 
     {
-        val = sanitizeString(val);
-        return typeof val === 'string' ? val.trim().substring(0, ClientService.addressCityMaxLen): undefined; // Max len 50
+        val = sanitizeString(val, limit);
+        if (typeof val !== 'string') return undefined;
+
+        return val.length > 0 ? val: undefined;
     }
     // Drop down input
     #transformAddressState(val) 
     {
-        const normalized = sanitizeString(val);
-        if (typeof normalized !== 'string') { return undefined; }
+        val = sanitizeString(val, limit);
+        if (typeof val !== 'string') return undefined;
 
-        const cleaned = normalized.trim().substring(0, ClientService.addressStateMaxLen).toUpperCase(); 
-        if (!cleaned) { return undefined; }
-
-        // Match 2-letter code directly (e.g., "mi" -> "MI", "MI " -> "MI")
-        if (ClientService.states.has(cleaned)) 
-        { return cleaned; }
-
-        return undefined;
+        const code = val.trim().toUpperCase();
+        return ClientService.states.has(code) ? code : undefined;
     }
-    #transformAddressPostalCode(val)
+    #transformAddressPostalCode(val, limit)
     {
-        val = sanitizeString(val);
-        return typeof val === 'string' ? val.trim().substring(0, ClientService.addressPostalCodeMaxLen): undefined;
+        val = sanitizeString(val, limit);
+        if (typeof val !== 'string') return undefined;
+
+        return val.length > 0 ? val: undefined;
     }
     
     // #endregion
