@@ -47,13 +47,13 @@ export function sanitizeInteger(val, positiveRequired = false)
 
     return floored;
 }
-export function sanitizeDecimal(val, { nonNegative = true } = {}) 
+export function sanitizeDecimal(val, positiveRequired = false) 
 {
     const sanitized = sanitizeNumber(val);
     if (typeof sanitized !== 'number' || !Number.isFinite(sanitized)) 
     { return sanitized; }
 
-    if (nonNegative && sanitized < 0) 
+    if (positiveRequired === true && sanitized < 0) 
     { return undefined; }
 
     return sanitized;
