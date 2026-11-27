@@ -181,8 +181,9 @@ export const PATTERN_TC = Object.freeze({
 export const FLOORING_REQUEST_TN = "FlooringRequest";
 export const FLOORING_REQUEST_TC = Object.freeze({
     requestID: "requestID", clientID: "clientID", /** FK */ serviceAddressID: "serviceAddressID", /** FK */ 
-    preferredStartDate: "preferredStartDate", preferredEndDate: "preferredEndDate", proposedBudget: "proposedBudget",
-    notes: "notes", status: "status", rejectionReason: "rejectionReason"
+    submittedAt: "submittedAt", /** TO ADD */ 
+    preferredStartDate: "preferredStartDate", preferredEndDate: "preferredEndDate", 
+    proposedBudget: "proposedBudget", notes: "notes", status: "status", rejectionReason: "rejectionReason"
 });
 // #endregion
 

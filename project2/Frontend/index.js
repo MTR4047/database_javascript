@@ -24,39 +24,17 @@ function populateStateDropdown(selectEl, statesMap)
     selectEl.appendChild(fragment);
 }
 
-function formatCardExpiryInput(inputEl) {
-    if (!inputEl) return;
+function formatCardExpiryParts(mmValue, yyValue) 
+{
+    const month = Number(mmValue);
+    const year = Number(yyValue);
 
-    // Keep digits only, then insert '/' after the first 2 digits
-    const digitsOnly = inputEl.value.replace(/\D/g, '').slice(0, 4);
-    inputEl.value = digitsOnly.length > 2
-        ? `${digitsOnly.slice(0, 2)}/${digitsOnly.slice(2)}`
-        : digitsOnly;
-}
+    if (!Number.isInteger(month) || month < 1 || month > 12) return null;
+    if (!Number.isInteger(year) || year < 0 || year > 99) return null;
 
-function validateCardExpiryValue(rawValue, referenceDate = new Date()) {
-    const match = /^(0[1-9]|1[0-2])\/(\d{2})$/.exec((rawValue ?? '').trim());
-    if (!match) {
-        return { valid: false, reason: 'Use MM/YY format (01–12 for month).' };
-    }
-
-    const month = Number(match[1]); // 1..12
-    const year = 2000 + Number(match[2]);
-
-    const currentYear = referenceDate.getFullYear();
-    const currentMonth = referenceDate.getMonth() + 1; // 1..12
-
-    // Card is valid through the end of its expiration month
-    if (year < currentYear || (year === currentYear && month < currentMonth)) {
-        return { valid: false, reason: 'Card expiration date is in the past.' };
-    }
-
-    // Optional sanity cap (e.g., up to 20 years ahead)
-    if (year > currentYear + 20) {
-        return { valid: false, reason: 'Expiration year looks invalid.' };
-    }
-
-    return { valid: true, formatted: `${match[1]}/${match[2]}` };
+    const mm = String(month).padStart(2, '0');
+    const yy = String(year).padStart(2, '0');
+    return `${mm}/${yy}`;
 }
 
 const ROLE_DASHBOARD_MAP = Object.freeze({
@@ -152,13 +130,6 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 window.addEventListener('pageshow', (event) => { if (event.persisted) { checkExistingSession(); }} );
 
-cardExpInput?.addEventListener('input', () => { formatCardExpiryInput(cardExpInput); cardExpInput.setCustomValidity(''); });
-cardExpInput?.addEventListener('blur', () => {    
-    if (!cardExpInput.value) { cardExpInput.setCustomValidity(''); return; }
-    const check = validateCardExpiryValue(cardExpInput.value);
-    cardExpInput.setCustomValidity(check.valid ? '' : check.reason);
-});
-
 // Sign In via form submit event (triggers native pattern checks)
 loginForm.onsubmit = async function(e) 
 {
@@ -193,6 +164,15 @@ registerForm.onsubmit = async function(e)
 {
     e.preventDefault(); clearErrors();
 
+    const expMM = document.querySelector('#reg-card-exp-mm').value.trim();
+    const expYY = document.querySelector('#reg-card-exp-yy').value.trim();
+    const cardExpiration = formatCardExpiryParts(expMM, expYY);
+
+    if (!cardExpiration) {
+        showRegisterError('Please enter a valid expiration month (MM) and year (YY).');
+        return;
+    }
+
     const registrationPayload = {
         [userID_alias]: document.querySelector('#reg-email').value.trim(),
         [CLIENT_TC.password]: document.querySelector('#reg-password').value.trim(),
@@ -210,7 +190,7 @@ registerForm.onsubmit = async function(e)
         creditCard: {
             [CLIENT_TC.cardNumber]: document.querySelector('#reg-card-number').value.trim(),
             [CLIENT_TC.cardCVV]: document.querySelector('#reg-card-cvv').value.trim(),
-            [CLIENT_TC.cardExpiration]: document.querySelector('#reg-card-exp').value.trim()
+            [CLIENT_TC.cardExpiration]: cardExpiration
         }
     };
 

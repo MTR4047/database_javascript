@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="stylesheets.css">
+    <link rel="stylesheet" href="./Stylesheets/stylesheets.css">
     <title>Login & Registration - DSE 6100 Project 2</title>
     <style>
         .auth-container {
@@ -150,14 +150,16 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="reg-card-cvv">CVV:</label>
-                        <input type="text" id="reg-card-cvv" pattern="[0-9]{3,4}" maxlength="4" title="3 or 4 digit CVV" required>
+                        <input type="text" id="reg-card-cvv" inputmode="numeric" pattern="[0-9]{3,4}" maxlength="4" title="3 or 4 digit CVV" required>
                     </div>
-                <div class="form-group">
-                    <label for="reg-card-exp">Expiration (MM/YY):</label>
-                    <input type="text" id="reg-card-exp" inputmode="numeric" maxlength="5"
-                        pattern="^(0[1-9]|1[0-2])\/\d{2}$" placeholder="MM/YY"
-                        title="Enter a valid expiration date in MM/YY format (e.g., 08/28)" required>
-                </div>
+
+                    <div class="form-group">
+                        <label>Expiration (MM / YY):</label>
+                        <div class="form-row">
+                            <input type="number" id="reg-card-exp-mm" min="1" max="12" maxlength="2" step="1" placeholder="MM" aria-label="Expiration Month" required >
+                            <input type="number" id="reg-card-exp-yy" min="0" max="99" maxlength="2" step="1" placeholder="YY" aria-label="Expiration Year" required >
+                        </div>
+                    </div>
                 </div>
 
                 <p id="register-error-message" class="error-message"></p>
