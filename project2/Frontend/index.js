@@ -164,14 +164,14 @@ loginForm.onsubmit = async function(e)
 {
     e.preventDefault(); clearErrors();
 
-    const username = document.querySelector('#username-input').value.trim();
+    const userId = document.querySelector('#username-input').value.trim();
     const password = document.querySelector('#password-input').value.trim();
 
     try {
         const response = await fetch('http://localhost:5050/update/Clients/signIn', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ [userID_alias]: username, password })
+            body: JSON.stringify({ [userID_alias]: userId, password })
         });
 
         const resData = await response.json();
