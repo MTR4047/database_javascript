@@ -1,6 +1,6 @@
 import { ADDRESS_TC, ADDRESS_TN, CLIENT_TC, CLIENT_TN, limitString, nonAlphanumericRegex, nonNumericRegex, sanitizeDateValue, sanitizeString } from "../../Public/constants.js";
 import { ROLES as userRoles } from "../../Public/sessionMGMT.js";
-import { DbService } from "../db.js";
+import { DbService, getTransformFn } from "../db.js";
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -176,13 +176,22 @@ export default class ClientService
         catch (error) { console.log(error); return false; }
     }
 
-    async insertNewUser(email, password) 
+    async insertNewUser(email, password, address = { }, creditCard = { } ) 
     {
         try {
-            const CLIENT_TN = ClientService.CLIENT_SRV_TN; const CLIENT_TC = ClientService.CLIENT_SRV_TC;
+            const CLIENT_TN = ClientService.CLIENT_SRV_TN;      const CLIENT_TC = ClientService.CLIENT_SRV_TC;
+            const ADDRESS_TN = ClientService.ADDRESS_SRV_TN;    const ADDRESS_TC = ClientService.ADDRESS_SRV_TC;
 
             // const dateAdded = new Date();
-            const transformedUserID = this.#transformEmail(email); const transformedPassword = this.#transformPassword(password);
+            const transformedUserID = this.#transformEmail(email); 
+            const transformedPassword = this.#transformPassword(password);
+            
+            const safeAddress = address ?? {};
+            const transformedStreet = getTransformFn(this.#transformersAddressMap, ADDRESS_TC.street)?.(safeAddress.street);
+            const transformedCity = getTransformFn(this.#transformersAddressMap, ADDRESS_TC.city)?.(safeAddress.city);
+            const transformedState = getTransformFn(this.#transformersAddressMap, ADDRESS_TC.state)?.(safeAddress.state);
+            const transformedPostalCode = getTransformFn(this.#transformersAddressMap, ADDRESS_TC.postalCode)?.(safeAddress.postalCode);
+
             // Abort if input validation failed
             if (!transformedUserID || !transformedPassword) { return false; }
             

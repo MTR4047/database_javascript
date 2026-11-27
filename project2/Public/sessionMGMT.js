@@ -3,6 +3,7 @@ export const UPDATE_THRESHOLD_MS = 2 * 60 * 1000; // Update when necessary, 2 mi
 export const CHECK_INTERVAL_MS = 60 * 1000; // Check every 1 minute
 export const BUCKET_MS = 60 * 1000; // 1-minute buckets
 
+// What the session storage holds
 export const SSID_USER_TOKEN = 'user-session-token';
 export const SSID_USER_ID = 'user-id-name';
 export const SSID_USER_LAST_ACTIVE = 'user-last-active-time';

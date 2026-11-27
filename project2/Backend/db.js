@@ -23,6 +23,13 @@ import ProjectRequestSRV from './services/projectRequestService';
 import FinancialSRV from './services/financialService';
 import { tableLimit } from '../Public/constants';
 
+/**
+ * @param {Map<*, Function>} transformerMap
+ * @param {*} key
+ * @returns {Function|undefined}
+ */
+export function getTransformFn(transformerMap, key) { return transformerMap.get(key); }
+
 let instance = null;
 export class DbService 
 {
