@@ -1,3 +1,4 @@
+import { userID_alias } from "../Public/constants.js";
 import { removeSessionStorageContents, SSID_USER_ID, SSID_USER_LAST_ACTIVE, SSID_USER_TOKEN } from "../Public/sessionMGMT.js";
 
 const loginForm = document.querySelector('#user-sign-in');
@@ -9,33 +10,28 @@ const ROLE_DASHBOARD_MAP = Object.freeze({
     [ROLES.ADMIN]: 'adminDashboard.html'
 });
 
-function getDashboardUrl(role) {
-    return ROLE_DASHBOARD_MAP[role] ?? 'clientDashboard.html';
-}
-
+function getDashboardUrl(role) { return ROLE_DASHBOARD_MAP[role] ?? 'clientDashboard.html'; }
 function clearError() { if (errorMsg) errorMsg.textContent = ''; }
 function showError(msg) { if (errorMsg) errorMsg.textContent = msg; }
 
-
 // --- SESSION GUARD FOR BACK BUTTON NAVIGATION ---
-async function fetchActiveRole(token) {
+async function fetchActiveRole(token) 
+{
     if (!token) return null;
 
-    try {
-        const response = await fetch('http://localhost:5050/auth/session', {
+    try 
+    {
+        const response = await fetch('http://localhost:5050/validateUserSession', {
             method: 'GET',
-            headers: {
-                [SSID_USER_TOKEN]: token
-            }
+            headers: { [SSID_USER_TOKEN]: token }
         });
 
         if (!response.ok) return null;
         const data = await response.json();
         return data?.role ?? null;
-    } catch (err) {
-        console.error('Session role lookup error:', err);
-        return null;
-    }
+    } 
+    catch (err) 
+    { console.error('Session role lookup error:', err); return null; }
 }
 
 async function signOutBackend(token, user) 
@@ -65,7 +61,7 @@ async function checkExistingSession()
 
     // If session data exists, the user is trying to access index.html while logged in
     if (token || user) 
-        {
+    {
         const confirmLogout = window.confirm('You are currently logged in. Going back to the login page will log you out. Do you want to proceed?');
 
         // User confirmed: Clear session storage and notify backend
@@ -106,7 +102,7 @@ loginForm.onsubmit = async function(e)
         const response = await fetch('http://localhost:5050/update/Clients/signIn', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ [userID_alias]: username, password })
         });
 
         const resData = await response.json();
@@ -114,10 +110,10 @@ loginForm.onsubmit = async function(e)
         // Transition into the tableContents.html!
         if (response.ok && resData.success) 
         {
-            sessionStorage.setItem(SSID_USER_ID, resData.data.username); // Can use session storage to get the data, the token begin used is better though
+            sessionStorage.setItem(SSID_USER_ID, resData.data.email); // Can use session storage to get the data, the token begin used is better though
             sessionStorage.setItem(SSID_USER_TOKEN, resData.token);
             sessionStorage.setItem(SSID_USER_LAST_ACTIVE, resData.activeTime);
-            window.location.href = 'tableContents.html'; // with session storage, we don't need to pass data!
+            window.location.href = getDashboardUrl(resData.data.role); // with session storage, we don't need to pass data!
         } 
         else { showError(resData.error || 'Invalid credentials. Check username and password.'); }
     } 
@@ -152,7 +148,7 @@ registerBtn.onclick = async function()
             sessionStorage.setItem(SSID_USER_ID, resData.data.username); // Wouldn't use this as much as the token
             sessionStorage.setItem(SSID_USER_TOKEN, resData.token);
             sessionStorage.setItem(SSID_USER_LAST_ACTIVE, resData.activeTime);
-            window.location.href = 'tableContents.html';
+            window.location.href = getDashboardUrl(resData.data.role);
         } 
         else { showError(resData.error || 'Registration failed.'); }
     } 
