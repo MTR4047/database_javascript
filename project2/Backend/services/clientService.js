@@ -3,7 +3,6 @@ import { ROLES as userRoles } from "../../Public/sessionMGMT.js";
 import { DbService, getTransformFn } from "../db.js";
 import crypto from 'crypto';
 import dotenv from 'dotenv';
-import FinancialService from "./financialService.js";
 import ProjectRequestService from "./projectRequestService.js";
 dotenv.config();
 

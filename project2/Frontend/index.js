@@ -1,10 +1,63 @@
-import { ADDRESS_TC, CLIENT_TC, userID_alias } from "../Public/constants.js";
+import { ADDRESS_TC, CLIENT_TC, US_States, userID_alias } from "../Public/constants.js";
 import { removeSessionStorageContents, SSID_USER_ID, SSID_USER_LAST_ACTIVE, SSID_USER_TOKEN } from "../Public/sessionMGMT.js";
 
 const loginForm = document.querySelector('#user-sign-in');
 const registerForm = document.querySelector('#register-button');
 const loginErrorMsg = document.querySelector('#login-error-message');
 const registerErrorMsg = document.querySelector('#register-error-message');
+const stateSelect = document.querySelector('#reg-state'); 
+const cardExpInput = document.querySelector('#reg-card-exp');
+
+function populateStateDropdown(selectEl, statesMap) 
+{
+    if (!selectEl || !statesMap) return;
+
+    const fragment = document.createDocumentFragment();
+
+    for (const [code, name] of statesMap.entries()) {
+        const option = document.createElement('option');
+        option.value = code; // e.g. "MI"
+        option.textContent = `${code} - ${name}`; // or just `name`
+        fragment.appendChild(option);
+    }
+
+    selectEl.appendChild(fragment);
+}
+
+function formatCardExpiryInput(inputEl) {
+    if (!inputEl) return;
+
+    // Keep digits only, then insert '/' after the first 2 digits
+    const digitsOnly = inputEl.value.replace(/\D/g, '').slice(0, 4);
+    inputEl.value = digitsOnly.length > 2
+        ? `${digitsOnly.slice(0, 2)}/${digitsOnly.slice(2)}`
+        : digitsOnly;
+}
+
+function validateCardExpiryValue(rawValue, referenceDate = new Date()) {
+    const match = /^(0[1-9]|1[0-2])\/(\d{2})$/.exec((rawValue ?? '').trim());
+    if (!match) {
+        return { valid: false, reason: 'Use MM/YY format (01–12 for month).' };
+    }
+
+    const month = Number(match[1]); // 1..12
+    const year = 2000 + Number(match[2]);
+
+    const currentYear = referenceDate.getFullYear();
+    const currentMonth = referenceDate.getMonth() + 1; // 1..12
+
+    // Card is valid through the end of its expiration month
+    if (year < currentYear || (year === currentYear && month < currentMonth)) {
+        return { valid: false, reason: 'Card expiration date is in the past.' };
+    }
+
+    // Optional sanity cap (e.g., up to 20 years ahead)
+    if (year > currentYear + 20) {
+        return { valid: false, reason: 'Expiration year looks invalid.' };
+    }
+
+    return { valid: true, formatted: `${match[1]}/${match[2]}` };
+}
 
 const ROLE_DASHBOARD_MAP = Object.freeze({
     [ROLES.CLIENT]: 'clientDashboard.html',
@@ -93,8 +146,18 @@ async function checkExistingSession()
 }
 
 // Run check on initial page load; Run check on pageshow event (handles browser Back/Forward cache in modern browsers)
-window.addEventListener('DOMContentLoaded', checkExistingSession);
+window.addEventListener('DOMContentLoaded', () => {
+    populateStateDropdown(stateSelect, US_States);
+    checkExistingSession();
+});
 window.addEventListener('pageshow', (event) => { if (event.persisted) { checkExistingSession(); }} );
+
+cardExpInput?.addEventListener('input', () => { formatCardExpiryInput(cardExpInput); cardExpInput.setCustomValidity(''); });
+cardExpInput?.addEventListener('blur', () => {    
+    if (!cardExpInput.value) { cardExpInput.setCustomValidity(''); return; }
+    const check = validateCardExpiryValue(cardExpInput.value);
+    cardExpInput.setCustomValidity(check.valid ? '' : check.reason);
+});
 
 // Sign In via form submit event (triggers native pattern checks)
 loginForm.onsubmit = async function(e) 
