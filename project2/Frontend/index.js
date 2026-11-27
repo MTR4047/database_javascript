@@ -4,35 +4,88 @@ const loginForm = document.querySelector('#user-sign-in');
 const registerBtn = document.querySelector('#register-button');
 const errorMsg = document.querySelector('#error-message');
 
+const ROLE_DASHBOARD_MAP = Object.freeze({
+    [ROLES.CLIENT]: 'clientDashboard.html',
+    [ROLES.ADMIN]: 'adminDashboard.html'
+});
+
+function getDashboardUrl(role) {
+    return ROLE_DASHBOARD_MAP[role] ?? 'clientDashboard.html';
+}
+
 function clearError() { if (errorMsg) errorMsg.textContent = ''; }
 function showError(msg) { if (errorMsg) errorMsg.textContent = msg; }
 
+
 // --- SESSION GUARD FOR BACK BUTTON NAVIGATION ---
-async function checkExistingSession() {
-    const token = sessionStorage.getItem(SSID_USER_TOKEN); 
+async function fetchActiveRole(token) {
+    if (!token) return null;
+
+    try {
+        const response = await fetch('http://localhost:5050/auth/session', {
+            method: 'GET',
+            headers: {
+                [SSID_USER_TOKEN]: token
+            }
+        });
+
+        if (!response.ok) return null;
+        const data = await response.json();
+        return data?.role ?? null;
+    } catch (err) {
+        console.error('Session role lookup error:', err);
+        return null;
+    }
+}
+
+async function signOutBackend(token, user) 
+{
+    if (!token) return;
+
+    try {
+        const response = await fetch('http://localhost:5050/update/Clients/signOut', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                [SSID_USER_TOKEN]: token
+            },
+            body: JSON.stringify({ username: user })
+        });
+
+        if (!response.ok) { console.warn('Backend sign-out returned status:', response.status); }
+    } 
+    catch (err) 
+    { console.error('Backend sign-out notification error:', err); }
+}
+
+async function checkExistingSession() 
+{
+    const token = sessionStorage.getItem(SSID_USER_TOKEN);
     const user = sessionStorage.getItem(SSID_USER_ID);
 
     // If session data exists, the user is trying to access index.html while logged in
-    if (token || user) {
-        const confirmLogout = window.confirm("You are currently logged in. Going back to the login page will log you out. Do you want to proceed?");
+    if (token || user) 
+        {
+        const confirmLogout = window.confirm('You are currently logged in. Going back to the login page will log you out. Do you want to proceed?');
 
         // User confirmed: Clear session storage and notify backend
-        if (confirmLogout) {
+        if (confirmLogout) 
+        {
             removeSessionStorageContents();
+            await signOutBackend(token, user);
+        } 
+        else // User disagreed: Ask server for role; if null/invalid, clear and sign out
+        {
+            const role = await fetchActiveRole(token, user);
 
-            if (token) {                
-                try {
-                    const response = await fetch('http://localhost:5050/update/Clients/signOut', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', [SSID_USER_TOKEN]: token },
-                        body: JSON.stringify({ username: user })
-                    });
-                } 
-                catch (err) { console.error('Backend sign-out notification error:', err); }
-            } 
-        } else {
-            // User disagreed: Disallow going back by redirecting them to dashboard page
-            window.location.href = '.html';
+            if (!role) 
+            {
+                removeSessionStorageContents();
+                await signOutBackend(token, user);
+                return;
+            }
+
+            window.location.href = getDashboardUrl(role);
         }
     }
 }

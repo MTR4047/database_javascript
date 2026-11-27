@@ -12,57 +12,12 @@ export const ROLES = Object.freeze({
     CONTRACTOR: "contractor"
 });
 
-export class SessionMinHeap {
-    constructor() { this.heap = []; }
-
-    push(token, expiresAt) {
-        this.heap.push({ token, expiresAt });
-        this._upheap(this.heap.length - 1);
-    }
-
-    pop() {
-        if (this.heap.length === 0) return null;
-        if (this.heap.length === 1) return this.heap.pop();
-        
-        const top = this.heap[0];
-        this.heap[0] = this.heap.pop();
-        this._downheap(0);
-        return top;
-    }
-
-    peek() { return this.heap.length > 0 ? this.heap[0] : null; }
-
-    _upheap(i) {
-        while (i > 0) {
-            const p = Math.floor((i - 1) / 2);
-            if (this.heap[i].expiresAt >= this.heap[p].expiresAt) break;
-            [this.heap[i], this.heap[p]] = [this.heap[p], this.heap[i]];
-            i = p;
-        }
-    }
-
-    _downheap(i) {
-        const last = this.heap.length - 1;
-        while ((i * 2 + 1) <= last) {
-            let left = i * 2 + 1; let right = left + 1;
-            let smallest = i;
-
-            if (this.heap[left].expiresAt < this.heap[smallest].expiresAt) smallest = left;
-            if (right <= last && this.heap[right].expiresAt < this.heap[smallest].expiresAt) smallest = right;
-
-            if (smallest === i) break;
-            [this.heap[i], this.heap[smallest]] = [this.heap[smallest], this.heap[i]];
-            i = smallest;
-        }
-    }
-}
-
 // SessionExpirationBuckets.js
 
 export class SessionExpirationBuckets 
 {
     /** @type {Number} */ bucketMs;
-    /** @type {Map<, Set<token>>} */ buckets;
+    /** @type {Map<number, Set<string>>} */ buckets;
 
     constructor(inpBucketMs = BUCKET_MS) 
     {
@@ -84,21 +39,28 @@ export class SessionExpirationBuckets
         return bucketKey;
     }
 
-    moveTokenToNewBucket(token, session, newExpiryTimestamp) {
+    removeTokenFromBucket(token, bucketKey) 
+    {
+        if (bucketKey === undefined || !this.buckets.has(bucketKey)) 
+        { return false; }
+
+        const bucketSet = this.buckets.get(bucketKey);
+        const removed = bucketSet.delete(token);
+        if (bucketSet.size === 0) {
+            this.buckets.delete(bucketKey);
+        }
+
+        return removed;
+    }
+
+    moveTokenToNewBucket(token, session, newExpiryTimestamp) 
+    {
         const newBucketKey = this.getBucketKey(newExpiryTimestamp);
 
-        if (session.bucketKey === newBucketKey) {
-            return session.bucketKey;
-        }
+        if (session.bucketKey === newBucketKey) 
+        { return session.bucketKey; }
 
-        if (session.bucketKey !== undefined && this.buckets.has(session.bucketKey)) {
-            const oldSet = this.buckets.get(session.bucketKey);
-            oldSet.delete(token);
-            if (oldSet.size === 0) {
-                this.buckets.delete(session.bucketKey);
-            }
-        }
-
+        this.removeTokenFromBucket(token, session.bucketKey);  
         session.bucketKey = this.addTokenToBucket(token, newExpiryTimestamp);
         return session.bucketKey;
     }
@@ -134,6 +96,28 @@ export function removeSessionStorageContents()
     sessionStorage.removeItem(SSID_USER_TOKEN);
     sessionStorage.removeItem(SSID_USER_ID);
     sessionStorage.removeItem(SSID_USER_LAST_ACTIVE);
+}
+
+export async function fetchActiveRole(token, user) {
+    if (!token) return null;
+
+    try {
+        const response = await fetch('http://localhost:5050/validateUserSession', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                [SSID_USER_TOKEN]: token
+            },
+            body: JSON.stringify({ [SSID_USER_ID]: user })
+        });
+
+        if (!response.ok) return null;
+
+        const data = await response.json();
+        return data?.success ? (data.role ?? null) : null;
+    } 
+    catch (err) 
+    { console.error('Session validation error:', err); return null; }
 }
 
 // Track user activity and update timestamp in sessionStorage, this is for LOCAL tracking! GLOBAL tracking is also handled on the server as well.

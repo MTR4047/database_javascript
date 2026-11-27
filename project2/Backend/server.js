@@ -15,7 +15,17 @@ app.use(express.json())
 app.use(express.urlencoded({extended: false}));
 
 // #region Authentication & Client Management
-const activeUserSessions = new Map();
+
+/**
+ * @typedef {Object} UserSession
+ * @property {string} [email]
+ * @property {string} role
+ * @property {number} lastActive
+ * @property {number} lastUpdated
+ * @property {number|string|undefined} bucketKey
+ */
+
+/** @type {Map<string, UserSession>} */ const activeUserSessions = new Map();
 // const SESSION_TIMEOUT_MS = 10.5 * 60 * 1000; // 10.5 minutes in milliseconds
 // const UPDATE_THRESHOLD_MS = 2 * 60 * 1000; // Update when necessary, 2 minute update threshold
 
@@ -56,14 +66,19 @@ setInterval(() => {
 function registerSession(token, email, sessionDate = Date.now(), role = ROLES.CLIENT) 
 {
     const session = { [userID_alias]: email, role: role, lastActive: sessionDate, lastUpdated: sessionDate, bucketKey: undefined };
-    session.bucketKey = sessionBuckets.addTokenToBucket(token, now + SESSION_TIMEOUT_MS);
+    session.bucketKey = sessionBuckets.addTokenToBucket(token, sessionDate + SESSION_TIMEOUT_MS);
     activeUserSessions.set(token, session);
 }
 
-function deregisterSession(token)
+function deregisterSession(token) 
 {
-    sessionBuckets
-    activeUserSessions.delete(token);   
+    if (!token || typeof token !== 'string') return false;
+
+    const session = activeUserSessions.get(token);
+    if (!session) return false;
+
+    sessionBuckets.removeTokenFromBucket(token, session.bucketKey);
+    return activeUserSessions.delete(token);
 }
 
 // Helper to validate incoming tokens on protected endpoints
@@ -97,7 +112,8 @@ function authenticateToken(request, response, next)
 
     // Note that, if we have authenticate token as "parameter" on the endpoint, it becomes a middleware function!!
     // Attach using the shared alias ("email") and extract the identifier value from `session`
-    request[userID_alias] = session[userID_alias] ?? session.email;
+    request[userID_alias] = session[userID_alias];
+    request.role = session.role;
     
     next();
 }
@@ -117,7 +133,9 @@ app.post('/validateUserSession', authenticateToken, (request, response) => {
     if (userID && userID !== serverSessionUserID) 
     { return response.status(401).json({ success: false, error: 'Session security violation: User identifier mismatch. Please sign in again.' }); }
 
-    response.json({ success: true, message: "Session exists", [userID_alias]: serverSessionUserID });
+    const role = request.role;
+
+    response.json({ success: true, message: "Session exists", [userID_alias]: serverSessionUserID, role: role });
 });
 
 app.post('/update/Clients/signIn', (request, response) => {
@@ -145,9 +163,8 @@ app.post('/update/Clients/signIn', (request, response) => {
 });
 
 app.post('/update/Clients/signOut', authenticateToken, (request, response) => {
-    const token = request.headers[SSID_USER_TOKEN];
-    
-    if (token) { activeUserSessions.delete(token); }
+    const token = request.headers[SSID_USER_TOKEN];    
+    if (token) { deregisterSession(token); }
     
     response.json({ success: true, message: 'Signed out successfully.' });
 });
