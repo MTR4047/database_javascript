@@ -18,6 +18,7 @@ app.use(express.urlencoded({extended: false}));
 
 /**
  * @typedef {Object} UserSession
+ * @property {number} userNumericalID
  * @property {string} [email]
  * @property {string} role
  * @property {number} lastActive
@@ -63,9 +64,9 @@ setInterval(() => {
 // Helper to register a session
 
 
-function registerSession(token, email, sessionDate = Date.now(), role = ROLES.CLIENT) 
+function registerSession(token, numericalID, email, sessionDate = Date.now(), role = ROLES.CLIENT) 
 {
-    const session = { [userID_alias]: email, role: role, lastActive: sessionDate, lastUpdated: sessionDate, bucketKey: undefined };
+    const session = { userNumericalID: numericalID, [userID_alias]: email, role: role, lastActive: sessionDate, lastUpdated: sessionDate, bucketKey: undefined };
     session.bucketKey = sessionBuckets.addTokenToBucket(token, sessionDate + SESSION_TIMEOUT_MS);
     activeUserSessions.set(token, session);
 }
@@ -114,6 +115,7 @@ function authenticateToken(request, response, next)
     // Attach using the shared alias ("email") and extract the identifier value from `session`
     request[userID_alias] = session[userID_alias];
     request.role = session.role;
+    request.userNumericalID = session.userNumericalID;
     
     next();
 }
@@ -151,7 +153,7 @@ app.post('/update/Clients/signIn', (request, response) => {
             while (activeUserSessions.has(token)) { token = crypto.randomUUID(); } // AVOID DUPLICATES
             const now = Date.now();        
 
-            registerSession(token, userData.email, now, userData.role); // Store session with timestamp            
+            registerSession(token, userData.clientID, userData.email, now, userData.role); // Store session with timestamp            
             response.json({ success: true, data: userData, token: token, activeTime: now }); 
         } 
         else { response.status(401).json({ success: false, error: 'Invalid user ID or password.' }); }
@@ -182,7 +184,7 @@ app.post('/insert/Clients', (request, response) => {
             const now = Date.now();
             const role = ROLES.CLIENT; // Ana's admin account will always exist prior, so insert does not make sense
 
-            registerSession(token, userData.email, now, role); // Store session with timestamp
+            registerSession(token, userData.clientID, userData.email, now, role); // Store session with timestamp
             
             response.json({ success: true, data: userData, token: token, activeTime: now }); 
         } 

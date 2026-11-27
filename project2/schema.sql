@@ -46,7 +46,8 @@ CREATE TABLE Address (
     street      VARCHAR(100) NOT NULL,
     city        VARCHAR(50)  NOT NULL,
     state       CHAR(2)      NOT NULL,          -- e.g. 'MI'
-    postalCode  VARCHAR(50)  NOT NULL           -- text keeps leading zeros and ZIP+4
+    postalCode  VARCHAR(50)  NOT NULL,           -- text keeps leading zeros and ZIP+4
+    UNIQUE(street, city, state, postalCode) -- TO ADD
 );
 
 -- Clients: each client lives at exactly one address (N:1, total).
@@ -56,7 +57,7 @@ CREATE TABLE Client (
     lastName        VARCHAR(50)  NOT NULL,
     phoneNumber     VARCHAR(50)  NOT NULL,
     email           VARCHAR(100) NOT NULL UNIQUE,   -- also the login name
-    passwordHash    VARCHAR(100) NOT NULL,
+    passwordHash    VARCHAR(255) NOT NULL,
     cardNumber      VARCHAR(50)  NOT NULL,          -- text keeps all 13-19 digits
     cardCVV         VARCHAR(50)  NOT NULL,          -- text keeps leading zeros
     cardExpiration  DATE         NOT NULL,          -- last day of the expiry month
