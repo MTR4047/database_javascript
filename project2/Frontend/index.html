@@ -4,31 +4,168 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="stylesheets.css">
-    <title>Login - DSE 6100 Project 2</title>
+    <title>Login & Registration - DSE 6100 Project 2</title>
+    <style>
+        .auth-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+            align-items: flex-start;
+            gap: 2rem;
+            max-width: 1000px;
+            margin: 2rem auto;
+        }
+        .auth-card {
+            flex: 1;
+            padding: 1.5rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: #fff;
+        }
+        .form-group {
+            margin-bottom: 0.8rem;
+            display: flex;
+            flex-direction: column;
+        }
+        .form-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .form-row .form-group {
+            flex: 1;
+        }
+        .auth-card h2 {
+            margin-top: 0;
+            text-align: center;
+        }
+        .actions {
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .error-message {
+            color: red;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
-    <h1>Anna's Flooring & Installation</h1>
-    
-    <form id="user-sign-in"> <h2>Sign In</h2>
-        <label for="username-input">Username:</label> 
-        <input type="email" id="username-input" maxlength="100"
-            pattern="[^'&quot;?!=\\`\\;&lt;&gt;]+" title="Characters ' &quot; ? ! = ` \ ; < > are not allowed."
-            required >
-        <br>        
-        
-        <label for="password-input">Password:</label> 
-        <input type="password" id="password-input"  minlength="8"
-            pattern="[^'&quot;?!=\\`\\;&lt;&gt;]+" title="Characters ' &quot; ? ! = ` \ ; < > are not allowed."
-            required>
-        <br>
-        
-        <p id="error-message" style="color: red; margin-top: 10px; font-size: 0.9rem; text-align: center;"></p>
+    <h1 style="text-align: center;">Anna's Flooring & Installation</h1>
 
-        <div class="actions">
-            <button type="submit" id="sign-in-button">Sign In</button>
-            <button type="button" id="register-button">Register</button>
+    <div class="auth-container">
+        <!-- SIGN IN COLUMN -->
+        <div class="auth-card">
+            <h2>Sign In</h2>
+            <form id="user-sign-in">
+                <div class="form-group">
+                    <label for="username-input">User ID / Email:</label>
+                    <input type="email" id="username-input" maxlength="100"
+                        pattern="[^'&quot;?!=\\`\\;&lt;&gt;]+" title="Characters ' &quot; ? ! = ` \ ; < > are not allowed."
+                        required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password-input">Password:</label>
+                    <input type="password" id="password-input" minlength="8"
+                        pattern="[^'&quot;?!=\\`\\;&lt;&gt;]+" title="Characters ' &quot; ? ! = ` \ ; < > are not allowed."
+                        required>
+                </div>
+
+                <p id="login-error-message" class="error-message"></p>
+
+                <div class="actions">
+                    <button type="submit" id="sign-in-button">Sign In</button>
+                </div>
+            </form>
         </div>
-    </form>
+
+        <!-- REGISTER COLUMN -->
+        <div class="auth-card">
+            <h2>Register</h2>
+            <form id="user-register">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="reg-first-name">First Name:</label>
+                        <input type="text" id="reg-first-name" maxlength="50" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-last-name">Last Name:</label>
+                        <input type="text" id="reg-last-name" maxlength="50" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-email">User ID / Email:</label>
+                    <input type="email" id="reg-email" maxlength="100"
+                        pattern="[^'&quot;?!=\\`\\;&lt;&gt;]+" title="Characters ' &quot; ? ! = ` \ ; < > are not allowed."
+                        required>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-password">Password:</label>
+                    <input type="password" id="reg-password" minlength="8"
+                        pattern="[^'&quot;?!=\\`\\;&lt;&gt;]+" title="Characters ' &quot; ? ! = ` \ ; < > are not allowed."
+                        required>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-phone">Phone Number:</label>
+                    <input type="tel" id="reg-phone" pattern="^\+?[0-9\s\-\(\)]{7,20}$" 
+                        title="Please enter a valid phone number." required>
+                </div>
+
+                <!-- ADDRESS DETAILS -->
+                <div class="form-group">
+                    <label for="reg-street">Street Address:</label>
+                    <input type="text" id="reg-street" maxlength="100" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="reg-city">City:</label>
+                        <input type="text" id="reg-city" maxlength="50" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-state">State:</label>
+                        <input type="text" id="reg-state" maxlength="2" pattern="[A-Za-z]{2}" title="2-letter state code (e.g. MI)" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-postal">Postal Code:</label>
+                        <input type="text" id="reg-postal" maxlength="10" pattern="^[0-9]{5}(-[0-9]{4})?$" title="5-digit ZIP or ZIP+4" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reg-country">Country:</label>
+                    <input type="text" id="reg-country" value="United States" disabled readonly>
+                </div>
+
+                <!-- CREDIT CARD DETAILS -->
+                <div class="form-group">
+                    <label for="reg-card-number">Credit Card Number:</label>
+                    <input type="text" id="reg-card-number" pattern="[0-9]{13,19}" maxlength="19" title="13 to 19 digit card number" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="reg-card-cvv">CVV:</label>
+                        <input type="text" id="reg-card-cvv" pattern="[0-9]{3,4}" maxlength="4" title="3 or 4 digit CVV" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-card-exp">Expiration (MM/YY):</label>
+                        <input type="text" id="reg-card-exp" pattern="^(0[1-9]|1[0-2])\/[0-9]{2}$" placeholder="MM/YY" title="Format MM/YY" required>
+                    </div>
+                </div>
+
+                <p id="register-error-message" class="error-message"></p>
+
+                <div class="actions">
+                    <button type="submit" id="register-button">Register</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script src="index.js" type="module"></script>
 </body>

@@ -1,0 +1,252 @@
+/* ==========================================
+   GLOBAL DESIGN TOKENS & RESET
+   ========================================== */
+:root {
+    --primary-color: #2c3e50;
+    --primary-hover: #1a252f;
+    --accent-color: #2980b9;
+    --bg-color: #f8f9fa;
+    --card-bg: #ffffff;
+    --text-color: #333333;
+    --text-muted: #666666;
+    --border-color: #dcdcdc;
+    --error-color: #e74c3c;
+    --success-color: #27ae60;
+    --font-family: Roboto, Helvetica, Arial, sans-serif, "Segoe UI", ;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.5;
+    padding: 1.5rem;
+}
+
+/* ==========================================
+   TYPOGRAPHY & HEADINGS
+   ========================================== */
+h1 {
+    font-size: 1.8rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+h2 {
+    font-size: 1.4rem;
+    color: var(--primary-color);
+    margin-bottom: 0.8rem;
+}
+
+h3 {
+    font-size: 1.1rem;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+/* ==========================================
+   CONTAINERS & CARDS
+   ========================================== */
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.auth-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 2rem;
+    max-width: 1050px;
+    margin: 2rem auto;
+}
+
+.auth-card, .card {
+    flex: 1 1 420px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+}
+
+/* ==========================================
+   FORM CONTROLS & LAYOUT
+   ========================================== */
+form {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group {
+    margin-bottom: 0.9rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-row {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="number"],
+select,
+textarea {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.95rem;
+    font-family: inherit;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background-color: #fff;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(41, 128, 185, 0.15);
+}
+
+input:disabled,
+input[readonly] {
+    background-color: #eef1f4;
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+/* ==========================================
+   BUTTONS
+   ========================================== */
+button,
+.btn {
+    display: inline-block;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background-color: var(--primary-color);
+    color: #ffffff;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color 0.15s ease, transform 0.05s ease;
+}
+
+button:hover,
+.btn:hover {
+    background-color: var(--primary-hover);
+}
+
+button:active,
+.btn:active {
+    transform: translateY(1px);
+}
+
+button.btn-secondary {
+    background-color: #7f8c8d;
+}
+
+button.btn-secondary:hover {
+    background-color: #6c7a7d;
+}
+
+button.btn-danger {
+    background-color: var(--error-color);
+}
+
+button.btn-danger:hover {
+    background-color: #c0392b;
+}
+
+.actions {
+    margin-top: 1.2rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+/* ==========================================
+   TABLES (Dashboards & Summaries)
+   ========================================== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    background: var(--card-bg);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+th, td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+th {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+tr:hover {
+    background-color: #f1f4f7;
+}
+
+/* ==========================================
+   MESSAGES & BADGES
+   ========================================== */
+.error-message {
+    color: var(--error-color);
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+    text-align: center;
+    min-height: 1.2rem;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+}
+
+.status-pending { background-color: #f39c12; color: #fff; }
+.status-approved { background-color: var(--success-color); color: #fff; }
+.status-rejected { background-color: var(--error-color); color: #fff; }

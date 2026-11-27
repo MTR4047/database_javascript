@@ -173,10 +173,10 @@ app.post('/update/Clients/signOut', authenticateToken, (request, response) => {
 
 app.post('/insert/Clients', (request, response) => {
     const userID = request.body?.[userID_alias]; 
-    const { password } = request.body;
+    const { password, clientDetails, address, creditCard } = request.body;
     const db = dbService.getInstance().getClientSRV(); 
 
-    db.insertNewUser(userID, password).then(userData => {
+    db.insertNewUser(userID, password, clientDetails, address, creditCard).then(userData => {
         if (userData) 
         {
             let token = crypto.randomUUID();

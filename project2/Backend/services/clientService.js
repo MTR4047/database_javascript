@@ -1,4 +1,4 @@
-import { ADDRESS_TC, ADDRESS_TN, CLIENT_TC as ADDRESS_TC, CLIENT_TN as ADDRESS_TN, limitString, nonAlphanumericRegex, nonNumericRegex, sanitizeDateValue, sanitizeString, CLIENT_TN, CLIENT_TC, sanitizeInteger } from "../../Public/constants.js";
+import { ADDRESS_TC, ADDRESS_TN, CLIENT_TC as ADDRESS_TC, CLIENT_TN as ADDRESS_TN, limitString, nonAlphanumericRegex, nonNumericRegex, sanitizeDateValue, sanitizeString, CLIENT_TN, CLIENT_TC, sanitizeInteger, US_States } from "../../Public/constants.js";
 import { ROLES as userRoles } from "../../Public/sessionMGMT.js";
 import { DbService, getTransformFn } from "../db.js";
 import crypto from 'crypto';
@@ -43,8 +43,8 @@ export default class ClientService
     })();
 
     static CLIENT_SRV_STR_LIMITS = Object.freeze({
-        [this.CLIENT_SRV_TC.firstname]: 50,
-        [this.CLIENT_SRV_TC.lastname]: 50,
+        [this.CLIENT_SRV_TC.firstName]: 50,
+        [this.CLIENT_SRV_TC.lastName]: 50,
         [this.CLIENT_SRV_TC.passwordHash]: 255,
         [this.CLIENT_SRV_TC.phoneNumber]: 50,
         [this.CLIENT_SRV_TC.email]: 100,
@@ -61,11 +61,11 @@ export default class ClientService
     #transformersClientsMap = new Map([
         [ClientService.CLIENT_SRV_TC.addressID, (val) => val ],
         
-        [ClientService.CLIENT_SRV_TC.firstname, 
-            (val) => this.#transformName(val, ClientService.CLIENT_SRV_STR_LIMITS.firstname) 
+        [ClientService.CLIENT_SRV_TC.firstName, 
+            (val) => this.#transformName(val, ClientService.CLIENT_SRV_STR_LIMITS.firstName) 
         ], 
-        [ClientService.CLIENT_SRV_TC.lastname, 
-            (val) => this.#transformName(val, ClientService.CLIENT_SRV_STR_LIMITS.lastname) 
+        [ClientService.CLIENT_SRV_TC.lastName, 
+            (val) => this.#transformName(val, ClientService.CLIENT_SRV_STR_LIMITS.lastName) 
         ], 
         
         [ClientService.CLIENT_SRV_TC.passwordHash, (val) => this.#transformPassword(val, true) ], 
@@ -152,7 +152,7 @@ export default class ClientService
             if (!transformedUserID || !transformedPassword) { return false; }            
 
             const success = await new Promise((resolve, reject) => {
-                const pwQuery = `SELECT ${CLIENT_TC.clientID}, ${CLIENT_TC.email}, ${CLIENT_TC.passwordHash}, ${CLIENT_TC.firstname}, ${CLIENT_TC.lastname} FROM ${CLIENT_TN} WHERE ${CLIENT_TC.email} LIKE ?`;
+                const pwQuery = `SELECT ${CLIENT_TC.clientID}, ${CLIENT_TC.email}, ${CLIENT_TC.passwordHash}, ${CLIENT_TC.firstName}, ${CLIENT_TC.lastName} FROM ${CLIENT_TN} WHERE ${CLIENT_TC.email} LIKE ?`;
                 
                 this.#connection.query(pwQuery, [transformedUserID], (err, results) => {
                     if (err) reject(new Error(err.message));
@@ -171,15 +171,15 @@ export default class ClientService
             return {
                 [CLIENT_TC.clientID]: user[CLIENT_TC.clientID],
                 [CLIENT_TC.email]: user[CLIENT_TC.email],
-                [CLIENT_TC.firstname]: user[CLIENT_TC.firstname],
-                [CLIENT_TC.lastname]: user[CLIENT_TC.lastname],
+                [CLIENT_TC.firstName]: user[CLIENT_TC.firstName],
+                [CLIENT_TC.lastName]: user[CLIENT_TC.lastName],
                 role: role
             };
         } 
         catch (error) { console.log(error); return false; }
     }
 
-    async insertNewUser(email, password, address = {}, creditCard = {}) 
+    async insertNewUser(email, password, clientDetails = {}, address = {}, creditCard = {}) 
     {
         const CLIENT_TN = ClientService.CLIENT_SRV_TN; const CLIENT_TC = ClientService.CLIENT_SRV_TC;
         const ADDRESS_TC = ClientService.ADDRESS_SRV_TC;
@@ -196,8 +196,12 @@ export default class ClientService
 
         try {
             // 1. Transform & validate all inputs upfront
+            const safeClient = clientDetails ?? {};
             const transformedUserID = this.#transformEmail(email);
             const transformedPassword = this.#transformPassword(password);
+            const transformedFirstName = getTransformFn(this.#transformersClientsMap, CLIENT_TC.firstName)?.(safeClient.firstName);
+            const transformedLastName = getTransformFn(this.#transformersClientsMap, CLIENT_TC.lastName)?.(safeClient.lastName);
+            const transformedPhoneNumber = getTransformFn(this.#transformersClientsMap, CLIENT_TC.phoneNumber)?.(safeClient.phoneNumber);
 
             const safeAddr = address ?? {};
             const transformedStreet = getTransformFn(this.#transformersAddressMap, ADDRESS_TC.street)?.(safeAddr.street);
@@ -210,10 +214,11 @@ export default class ClientService
             const transformedCardCVV = getTransformFn(this.#transformersClientsMap, CLIENT_TC.cardCVV)?.(safeCC.cardCVV);
             const transformedCardExpiry = getTransformFn(this.#transformersClientsMap, CLIENT_TC.cardExpiration)?.(safeCC.cardExpiration);
 
+            const invalidClnt = Boolean(!transformedUserID || !transformedPassword || !transformedFirstName || !transformedLastName || !transformedPhoneNumber);
             const invalidAddr = Boolean(!transformedStreet || !transformedCity || !transformedState || !transformedPostalCode);
             const invalidCC = Boolean(!transformedCardNumber || !transformedCardCVV || !transformedCardExpiry);
 
-            if (!transformedUserID || !transformedPassword || invalidAddr || invalidCC) { return false; }
+            if (invalidClnt || invalidAddr || invalidCC) { return false; }
 
             // 2. Start transaction
             await runQuery('BEGIN;'); inTransaction = true;
@@ -233,8 +238,8 @@ export default class ClientService
 
             // 4. Single atomic INSERT into Client with addressID and credit card fields
             const hashedPw = hashPasswordPBKDF2(transformedPassword);
-            const userInsertSql = `INSERT INTO ${CLIENT_TN} (${CLIENT_TC.email}, ${CLIENT_TC.password}, ${CLIENT_TC.addressID}, ${CLIENT_TC.cardNumber}, ${CLIENT_TC.cardCVV}, ${CLIENT_TC.cardExpiration}) VALUES (?, ?, ?, ?, ?, ?);`;
-            const userResult = await runQuery(userInsertSql, [ transformedUserID, hashedPw, addressID, transformedCardNumber, transformedCardCVV, transformedCardExpiry ]);
+            const userInsertSql = `INSERT INTO ${CLIENT_TN} (${CLIENT_TC.email}, ${CLIENT_TC.password}, ${CLIENT_TC.addressID}, ${CLIENT_TC.firstName}, ${CLIENT_TC.lastName}, ${CLIENT_TC.phoneNumber}, ${CLIENT_TC.cardNumber}, ${CLIENT_TC.cardCVV}, ${CLIENT_TC.cardExpiration}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`;
+            const userResult = await runQuery(userInsertSql, [ transformedUserID, hashedPw, addressID, transformedFirstName, transformedLastName, transformedPhoneNumber, transformedCardNumber, transformedCardCVV, transformedCardExpiry ]);
 
             if (userResult?.affectedRows !== 1) 
             { throw new Error('Client insert did not affect 1 row'); }
@@ -348,31 +353,6 @@ export default class ClientService
         [this.ADDRESS_SRV_TC.postalCode]: 50
     });
 
-    static states = new Map([
-        ["AL", "Alabama"], ["AK", "Alaska"], ["AZ", "Arizona"], ["AR", "Arkansas"],
-        ["CA", "California"], ["CO", "Colorado"], ["CT", "Connecticut"], ["DE", "Delaware"],
-        ["FL", "Florida"], ["GA", "Georgia"], ["HI", "Hawaii"],
-        ["ID", "Idaho"], ["IL", "Illinois"], ["IN", "Indiana"], ["IA", "Iowa"],
-        ["KS", "Kansas"], ["KY", "Kentucky"], ["LA", "Louisiana"],
-        ["ME", "Maine"], ["MD", "Maryland"], ["MA", "Massachusetts"], ["MI", "Michigan"],
-        ["MN", "Minnesota"], ["MS", "Mississippi"], ["MO", "Missouri"], ["MT", "Montana"],
-        ["NE", "Nebraska"], ["NV", "Nevada"], ["NH", "New Hampshire"], ["NJ", "New Jersey"],
-        ["NM", "New Mexico"], ["NY", "New York"], ["NC", "North Carolina"], ["ND", "North Dakota"],
-        ["OH", "Ohio"], ["OK", "Oklahoma"], ["OR", "Oregon"], ["PA", "Pennsylvania"],
-        ["RI", "Rhode Island"], ["SC", "South Carolina"], ["SD", "South Dakota"],
-        ["TN", "Tennessee"], ["TX", "Texas"], ["UT", "Utah"],
-        ["VT", "Vermont"], ["VA", "Virginia"],
-        ["WA", "Washington"], ["WV", "West Virginia"], ["WI", "Wisconsin"], ["WY", "Wyoming"],
-
-        ["DC", "District of Columbia"],
-        ["AS", "American Samoa"],
-        ["GU", "Guam"],
-        ["MP", "Northern Mariana Islands"],
-        ["PR", "Puerto Rico"],
-        ["UM", "United States Minor Outlying Islands"],
-        ["VI", "Virgin Islands, U.S."]
-    ]);    
-
     // Helper strictly for pagination on SELECT queries
     returnOffsetSTMT_Address(page = 1, sortColumn = ClientService.ADDRESS_SRV_TC.addressID, isAscending = true) 
     { return DbService.returnOffsetSTMT(page, sortColumn, isAscending); }
@@ -415,7 +395,7 @@ export default class ClientService
         if (typeof val !== 'string') return undefined;
 
         const code = val.trim().toUpperCase();
-        return ClientService.states.has(code) ? code : undefined;
+        return US_States.has(code) ? code : undefined;
     }
     #transformAddressPostalCode(val, limit)
     {

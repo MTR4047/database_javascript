@@ -1,9 +1,10 @@
-import { userID_alias } from "../Public/constants.js";
+import { ADDRESS_TC, CLIENT_TC, userID_alias } from "../Public/constants.js";
 import { removeSessionStorageContents, SSID_USER_ID, SSID_USER_LAST_ACTIVE, SSID_USER_TOKEN } from "../Public/sessionMGMT.js";
 
 const loginForm = document.querySelector('#user-sign-in');
-const registerBtn = document.querySelector('#register-button');
-const errorMsg = document.querySelector('#error-message');
+const registerForm = document.querySelector('#register-button');
+const loginErrorMsg = document.querySelector('#login-error-message');
+const registerErrorMsg = document.querySelector('#register-error-message');
 
 const ROLE_DASHBOARD_MAP = Object.freeze({
     [ROLES.CLIENT]: 'clientDashboard.html',
@@ -11,8 +12,9 @@ const ROLE_DASHBOARD_MAP = Object.freeze({
 });
 
 function getDashboardUrl(role) { return ROLE_DASHBOARD_MAP[role] ?? 'clientDashboard.html'; }
-function clearError() { if (errorMsg) errorMsg.textContent = ''; }
-function showError(msg) { if (errorMsg) errorMsg.textContent = msg; }
+function clearErrors() { if (loginErrorMsg) loginErrorMsg.textContent = ''; if (registerErrorMsg) registerErrorMsg.textContent = ''; }
+function showLoginError(msg) { if (loginErrorMsg) loginErrorMsg.textContent = msg; }
+function showRegisterError(msg) { if (registerErrorMsg) registerErrorMsg.textContent = msg; }
 
 // --- SESSION GUARD FOR BACK BUTTON NAVIGATION ---
 async function fetchActiveRole(token) 
@@ -22,13 +24,17 @@ async function fetchActiveRole(token)
     try 
     {
         const response = await fetch('http://localhost:5050/validateUserSession', {
-            method: 'GET',
-            headers: { [SSID_USER_TOKEN]: token }
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                [SSID_USER_TOKEN]: token 
+            },
+            body: JSON.stringify({ [userID_alias]: user })
         });
 
         if (!response.ok) return null;
         const data = await response.json();
-        return data?.role ?? null;
+        return data?.success ? (data.role ?? null) : null;
     } 
     catch (err) 
     { console.error('Session role lookup error:', err); return null; }
@@ -45,7 +51,7 @@ async function signOutBackend(token, user)
                 'Content-Type': 'application/json',
                 [SSID_USER_TOKEN]: token
             },
-            body: JSON.stringify({ username: user })
+            body: JSON.stringify({ [userID_alias]: user })
         });
 
         if (!response.ok) { console.warn('Backend sign-out returned status:', response.status); }
@@ -93,7 +99,7 @@ window.addEventListener('pageshow', (event) => { if (event.persisted) { checkExi
 // Sign In via form submit event (triggers native pattern checks)
 loginForm.onsubmit = async function(e) 
 {
-    e.preventDefault(); clearError();
+    e.preventDefault(); clearErrors();
 
     const username = document.querySelector('#username-input').value.trim();
     const password = document.querySelector('#password-input').value.trim();
@@ -107,50 +113,61 @@ loginForm.onsubmit = async function(e)
 
         const resData = await response.json();
 
-        // Transition into the tableContents.html!
         if (response.ok && resData.success) 
         {
-            sessionStorage.setItem(SSID_USER_ID, resData.data.email); // Can use session storage to get the data, the token begin used is better though
+            sessionStorage.setItem(SSID_USER_ID, resData.data.email);
             sessionStorage.setItem(SSID_USER_TOKEN, resData.token);
             sessionStorage.setItem(SSID_USER_LAST_ACTIVE, resData.activeTime);
-            window.location.href = getDashboardUrl(resData.data.role); // with session storage, we don't need to pass data!
+            window.location.href = getDashboardUrl(resData.data.role);
         } 
-        else { showError(resData.error || 'Invalid credentials. Check username and password.'); }
+        else { showLoginError(resData.error || 'Invalid credentials. Check username and password.'); }
     } 
-    catch (err) { console.error('Sign In Error:', err); showError('Unable to connect to server.'); }
+    catch (err) { console.error('Sign In Error:', err); showLoginError('Unable to connect to server.'); }
 };
 
 // Register Handler (explicit checkValidity call, as well as it not being a form submit)
-registerBtn.onclick = async function() 
+registerForm.onsubmit = async function(e) 
 {
-    clearError();
+    e.preventDefault(); clearErrors();
 
-    if (!loginForm.checkValidity()) // The checkValidity() method of the HTMLFormElement interface returns a boolean value which indicates if all associated controls meet any constraint validation rules applied to them.
-    {
-        loginForm.reportValidity(); // Triggers browser tooltip showing illegal characters; The reportValidity() method of the HTMLFormElement interface performs the same validity checking steps as the checkValidity() method.
-        return;
-    }
-
-    const username = document.querySelector('#username-input').value.trim();
-    const password = document.querySelector('#password-input').value.trim();
+    const registrationPayload = {
+        [userID_alias]: document.querySelector('#reg-email').value.trim(),
+        [CLIENT_TC.password]: document.querySelector('#reg-password').value.trim(),
+        clientDetails :{
+            [CLIENT_TC.firstName]: document.querySelector('#reg-first-name').value.trim(),
+            [CLIENT_TC.lastName]: document.querySelector('#reg-last-name').value.trim(),
+            [CLIENT_TC.phoneNumber]: document.querySelector('#reg-phone').value.trim(),
+        },
+        address: {
+            [ADDRESS_TC.street]: document.querySelector('#reg-street').value.trim(),
+            [ADDRESS_TC.city]: document.querySelector('#reg-city').value.trim(),
+            [ADDRESS_TC.state]: document.querySelector('#reg-state').value.trim(),
+            [ADDRESS_TC.postalCode]: document.querySelector('#reg-postal').value.trim()
+        },
+        creditCard: {
+            [CLIENT_TC.cardNumber]: document.querySelector('#reg-card-number').value.trim(),
+            [CLIENT_TC.cardCVV]: document.querySelector('#reg-card-cvv').value.trim(),
+            [CLIENT_TC.cardExpiration]: document.querySelector('#reg-card-exp').value.trim()
+        }
+    };
 
     try {
         const response = await fetch('http://localhost:5050/insert/Clients', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify(registrationPayload)
         });
 
         const resData = await response.json();
 
         if (response.ok && resData.success) 
         {
-            sessionStorage.setItem(SSID_USER_ID, resData.data.username); // Wouldn't use this as much as the token
+            sessionStorage.setItem(SSID_USER_ID, resData.data.email);
             sessionStorage.setItem(SSID_USER_TOKEN, resData.token);
             sessionStorage.setItem(SSID_USER_LAST_ACTIVE, resData.activeTime);
             window.location.href = getDashboardUrl(resData.data.role);
         } 
-        else { showError(resData.error || 'Registration failed.'); }
+        else { showRegisterError(resData.error || 'Registration failed.'); }
     } 
-    catch (err) { console.error('Registration Error:', err); showError('Unable to connect to server.'); }
+    catch (err) { console.error('Registration Error:', err); showRegisterError('Unable to connect to server.'); }
 };
