@@ -196,34 +196,6 @@ app.post('/insert/Clients', (request, response) => {
     });
 });
 
-/* Here, on the app.js, we have to pass something like fetch(http://localhost:5050/delete/Users/${username}),  
-{ method: 'DELETE', headers: { 'user-session-token': sessionToken }, body: JSON.stringify({username: username}) }).then
-*/ // However, we will not utilise this
-app.delete('/delete/Clients', authenticateToken, (request, response) => 
-{
-    /*
-    const userID = request.body?.[userID_alias]; console.log("delete " + userID);   
-    const serverSessionUserID = request[userID_alias];
-    
-    if (userID !== serverSessionUserID) 
-    { return response.status(403).json({ success: false, error: 'User must be authenticated and can only delete their own records.' }); }
-
-    const token = request.headers[SSID_USER_TOKEN];
-    const db = dbService.getInstance().getClientSRV();
-    const result = db.deleteRowByUserID(userID);
-    
-    result.then(data => {
-        // Remove active token from server memory map; Return success payload to client
-        if (token) { activeUserSessions.delete(token); }            
-        response.json({ success: true });
-    })
-    .catch(err => {
-        console.error('Database deletion error:', err);
-        response.status(500).json({ success: false, error: 'Database deletion failed.' });
-    });
-    */
-});
-
 // #endregion Authentication
 
 // #region CLIENTS TABLE

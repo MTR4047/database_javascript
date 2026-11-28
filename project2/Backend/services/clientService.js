@@ -265,30 +265,6 @@ export default class ClientService
         }
     }
 
-    /*
-    async deleteRowByUserID(email)
-    {
-        try
-        {
-            const CLIENT_TN = ClientService.CLIENT_SRV_TN; const CLIENT_TC = ClientService.CLIENT_SRV_TC;
-            const transformedUserID = this.#transformEmail(email);
-            
-            // use await to call an asynchronous function
-            const response = await new Promise((resolve, reject) => {
-                const query = `DELETE FROM ${CLIENT_TN} WHERE ${CLIENT_TC.email} = ?;`;
-                connection.query(query, [transformedUserID], (err, result) => {
-                    if(err) reject(new Error(err.message));
-                    else resolve(result.affectedRows);
-                });
-            });
-
-            console.log(response);  // for debugging to see the result of select
-            return response === 1 ? true: false;
-        }
-        catch(error) { console.log(error); return false; }
-    }
-    */
-
     async updateDetailsByUserID(data = {}, originalUserID) 
     {
         try {
