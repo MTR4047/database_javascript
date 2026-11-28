@@ -155,6 +155,7 @@ export class DbService
     // 3. This Month's Flooring Sales: For a user-specified month and year, list all accepted flooring quotes during that month
     returnMonthlySales(page, year, month)
     {
+        
         const Quote = FinancialSRV.QUOTE_SRV_TN;                            const quote_TC = FinancialSRV.QUOTE_SRV_TC;
         const FlooringRequest = ProjectRequestSRV.FLOORING_REQUEST_SRV_TN;  const request_TC = ProjectRequestSRV.FLOORING_REQUEST_SRV_TC;
         const Client = ClientSRV.CLIENT_SRV_TN;                             const client_TC = ClientSRV.CLIENT_SRV_TC;
@@ -163,6 +164,7 @@ export class DbService
         const normYear = sanitizeInteger(year, true); 
         const normMonth = sanitizeInteger(month, true);
 
+        // Need to add client ID to the result
         const query = `
             SELECT CONCAT(c.${client_TC.firstName}, ' ', c.${client_TC.lastName}) AS clientName,
                    r.${request_TC.requestID}                                      AS projectID,
@@ -278,6 +280,7 @@ export class DbService
         const FlooringRequest = ProjectRequestSRV.FLOORING_REQUEST_SRV_TN;      const request_TC = ProjectRequestSRV.FLOORING_REQUEST_SRV_TC;
         const Client = ClientSRV.CLIENT_SRV_TN;                                 const client_TC = ClientSRV.CLIENT_SRV_TC;
 
+        // Need to return r.requestID to the query
         const query = `
             SELECT CONCAT(c.${client_TC.firstName}, ' ', c.${client_TC.lastName}) AS clientName, o.${order_TC.orderID}, p.${product_TC.productName},
                    est.estimatedQuantity, u.${orderMats_TC.actualQuantityUsed},
