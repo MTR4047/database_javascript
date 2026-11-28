@@ -3,10 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="./Stylesheets/stylesheets.css">
+    <link rel="stylesheet" href="../Stylesheets/stylesheets.css">
     <title>Admin Dashboard</title>
 </head>
 <body>
+    <header id="app-header" class="site-header">
+        <div class="header-brand">
+            <a class="brand-link">Flooring Management System</a>
+        </div>
+
+        <div class="header-user-panel">
+            <div class="user-greeting">
+                Hello, <span id="header-client-name">Guest</span>
+            </div>
+            <div class="user-actions">
+                <button type="button" id="sign-out-btn" class="btn-secondary">Sign Out</button>
+            </div>
+        </div>
+    </header>
+    <hr class="header-divider">
     
+
+    <main id="admin-dashboard">
+        <section id="dashboard-boards" aria-label="Analytics Boards"></section>
+    </main>
+
+    <script type="module" src="./adminDashboard.js"></script>
 </body>
 </html>

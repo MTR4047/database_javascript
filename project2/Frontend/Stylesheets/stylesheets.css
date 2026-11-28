@@ -250,3 +250,43 @@ tr:hover {
 .status-pending { background-color: #f39c12; color: #fff; }
 .status-approved { background-color: var(--success-color); color: #fff; }
 .status-rejected { background-color: var(--error-color); color: #fff; }
+
+.site-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: var(--bg-surface, #ffffff);
+}
+
+.brand-link {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary, #333333);
+    text-decoration: none;
+}
+
+.header-user-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+}
+
+.user-greeting {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--text-primary, #000000);
+}
+
+.user-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.header-divider {
+    border: none;
+    border-bottom: 1px solid var(--border-color, #e0e0e0);
+    margin: 0;
+}

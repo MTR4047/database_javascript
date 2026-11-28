@@ -13,7 +13,7 @@ export const ROLES = Object.freeze({
     CONTRACTOR: "contractor"
 });
 
-// SessionExpirationBuckets.js
+// #region SessionExpirationBuckets.js
 
 export class SessionExpirationBuckets 
 {
@@ -83,7 +83,9 @@ export class SessionExpirationBuckets
     }
 }
 
-// Core expiration handler
+// #endregion
+
+// #region Core expiration handler
 export function handleSessionExpiration(message = 'Session expired. Please sign in again.') 
 {
     removeSessionStorageContents();
@@ -121,6 +123,9 @@ export async function fetchActiveRole(token, user) {
     { console.error('Session validation error:', err); return null; }
 }
 
+// #endregion
+
+// #region User Activity
 // Track user activity and update timestamp in sessionStorage, this is for LOCAL tracking! GLOBAL tracking is also handled on the server as well.
 function setupActivityListeners() {
     ['keydown', 'click', 'scroll', 'touchstart'].forEach(event => {
@@ -192,6 +197,75 @@ function startHeartbeat()
         { handleSessionExpiration('Your session has expired due to inactivity.'); }
     }, CHECK_INTERVAL_MS);
 }
+
+// #endregion
+
+// #region Other session management
+
+export async function fetchActiveRole(token) 
+{
+    if (!token) return null;
+
+    try 
+    {
+        const response = await fetch('http://localhost:5050/validateUserSession', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                [SSID_USER_TOKEN]: token 
+            },
+            body: JSON.stringify({ [userID_alias]: user })
+        });
+
+        if (!response.ok) return null;
+        const data = await response.json();
+        return data?.success ? (data.role ?? null) : null;
+    } 
+    catch (err) 
+    { console.error('Session role lookup error:', err); return null; }
+}
+
+export async function signOutBackend(token, user) 
+{
+    if (!token) return;
+
+    try {
+        const response = await fetch('http://localhost:5050/update/Clients/signOut', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                [SSID_USER_TOKEN]: token
+            },
+            body: JSON.stringify({ [userID_alias]: user })
+        });
+
+        if (!response.ok) { console.warn('Backend sign-out returned status:', response.status); }
+    } 
+    catch (err) 
+    { console.error('Backend sign-out notification error:', err); }
+}
+
+export function setupHeaderUI(clientName = 'Guest') {
+    const nameEl = document.querySelector('#header-client-name');
+    const signOutBtn = document.querySelector('#sign-out-btn');
+
+    if (nameEl) {
+        nameEl.textContent = clientName;
+    }
+
+    if (signOutBtn) {
+        signOutBtn.addEventListener('click', async () => {
+            const token = sessionStorage.getItem(SSID_USER_TOKEN);
+            const user = sessionStorage.getItem(SSID_USER_ID);
+
+            removeSessionStorageContents();
+            await signOutBackend(token, user);
+            window.location.href = '../index.html';
+        });
+    }
+}
+
+// #endregion
 
 // Main initializer to be called on protected pages
 export async function initSessionManager() 

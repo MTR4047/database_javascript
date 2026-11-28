@@ -166,7 +166,7 @@ export class DbService
 
         // Need to add client ID to the result
         const query = `
-            SELECT CONCAT(c.${client_TC.firstName}, ' ', c.${client_TC.lastName}) AS clientName,
+            SELECT c.${client_TC.clientID}, CONCAT(c.${client_TC.firstName}, ' ', c.${client_TC.lastName}) AS clientName,
                    r.${request_TC.requestID}                                      AS projectID,
                    CONCAT(a.${address_TC.street}, ', ', a.${address_TC.city})   AS serviceAddress,
                    q.${quote_TC.quoteID},
@@ -282,7 +282,7 @@ export class DbService
 
         // Need to return r.requestID to the query
         const query = `
-            SELECT CONCAT(c.${client_TC.firstName}, ' ', c.${client_TC.lastName}) AS clientName, o.${order_TC.orderID}, p.${product_TC.productName},
+            SELECT CONCAT(c.${client_TC.firstName}, ' ', c.${client_TC.lastName}) AS clientName, o.${order_TC.orderID}, p.${product_TC.productName}, r.${request_TC.requestID}, 
                    est.estimatedQuantity, u.${orderMats_TC.actualQuantityUsed},
                    ROUND((u.${orderMats_TC.actualQuantityUsed} - est.estimatedQuantity) / est.estimatedQuantity * 100, 1)       AS percentDifference,
                    ROUND((u.${orderMats_TC.actualQuantityUsed} - est.estimatedQuantity) * est.unitPrice, 2)                     AS additionalMaterialCost
@@ -314,7 +314,7 @@ export class DbService
         const Client = ClientSRV.CLIENT_SRV_TN;                             const client_TC = ClientSRV.CLIENT_SRV_TC;
 
         const query = `
-            SELECT CONCAT(c.${client_TC.firstName}, ' ', c.${client_TC.lastName}) AS clientName,
+            SELECT c.${client_TC.clientID}, CONCAT(c.${client_TC.firstName}, ' ', c.${client_TC.lastName}) AS clientName,
                    b.${bill_TC.billID}                                            AS billNumber,
                    b.${bill_TC.generatedAt}                                       AS billDate,
                    bt.totalAmount                                                 AS amountDue,

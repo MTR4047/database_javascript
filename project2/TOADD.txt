@@ -1,0 +1,5 @@
+add: UNIQUE(street, city, state, postalCode) TO address
+
+Fix up return queries: 
+Query 3 (add c.clientID)
+Query 7 (add r.requestID)

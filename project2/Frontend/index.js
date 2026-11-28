@@ -1,12 +1,11 @@
 import { ADDRESS_TC, CLIENT_TC, US_States, userID_alias } from "../Public/constants.js";
-import { removeSessionStorageContents, SSID_USER_ID, SSID_USER_LAST_ACTIVE, SSID_USER_TOKEN } from "../Public/sessionMGMT.js";
+import { fetchActiveRole, removeSessionStorageContents, signOutBackend, SSID_USER_ID, SSID_USER_LAST_ACTIVE, SSID_USER_TOKEN } from "../Public/sessionMGMT.js";
 
 const loginForm = document.querySelector('#user-sign-in');
 const registerForm = document.querySelector('#register-button');
 const loginErrorMsg = document.querySelector('#login-error-message');
 const registerErrorMsg = document.querySelector('#register-error-message');
 const stateSelect = document.querySelector('#reg-state'); 
-const cardExpInput = document.querySelector('#reg-card-exp');
 
 function populateStateDropdown(selectEl, statesMap) 
 {
@@ -48,49 +47,6 @@ function showLoginError(msg) { if (loginErrorMsg) loginErrorMsg.textContent = ms
 function showRegisterError(msg) { if (registerErrorMsg) registerErrorMsg.textContent = msg; }
 
 // --- SESSION GUARD FOR BACK BUTTON NAVIGATION ---
-async function fetchActiveRole(token) 
-{
-    if (!token) return null;
-
-    try 
-    {
-        const response = await fetch('http://localhost:5050/validateUserSession', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                [SSID_USER_TOKEN]: token 
-            },
-            body: JSON.stringify({ [userID_alias]: user })
-        });
-
-        if (!response.ok) return null;
-        const data = await response.json();
-        return data?.success ? (data.role ?? null) : null;
-    } 
-    catch (err) 
-    { console.error('Session role lookup error:', err); return null; }
-}
-
-async function signOutBackend(token, user) 
-{
-    if (!token) return;
-
-    try {
-        const response = await fetch('http://localhost:5050/update/Clients/signOut', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                [SSID_USER_TOKEN]: token
-            },
-            body: JSON.stringify({ [userID_alias]: user })
-        });
-
-        if (!response.ok) { console.warn('Backend sign-out returned status:', response.status); }
-    } 
-    catch (err) 
-    { console.error('Backend sign-out notification error:', err); }
-}
-
 async function checkExistingSession() 
 {
     const token = sessionStorage.getItem(SSID_USER_TOKEN);
@@ -118,7 +74,7 @@ async function checkExistingSession()
                 return;
             }
 
-            window.location.href = getDashboardUrl(role);
+            window.location.href = `./Dashboard/${getDashboardUrl(role)}`;
         }
     }
 }
