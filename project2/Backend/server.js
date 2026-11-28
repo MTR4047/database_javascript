@@ -280,7 +280,7 @@ app.patch('/update/Clients', authenticateToken, (request, response) => {
 const ADMIN_DASHBOARD_ACTIONS = new Map([
     [1, async (db, page) =>         { return await db.returnBestCustomers(page) } ],
     [2, async (db, page) =>         { return await db.returnWindowShoppers(page) } ],
-    [3, async (db, page, params) => { return await db.returnMonthlySales(page, params.year, params.month) } ],
+    [3, async (db, page, params = {}) => { return await db.returnMonthlySales(page, params?.year, params?.month) } ],
     [4, async (db, page) =>         { return await db.returnInactiveClients(page) } ],
     [5, async (db, page) =>         { return await db.returnLargestFlooringProjects(page) } ],
     [6, async (db, page) =>         { return await db.returnMostPopularMaterials(page) } ],
@@ -294,7 +294,7 @@ Object.freeze(ADMIN_DASHBOARD_ACTIONS);
 
 /* EXAMPLE USE on the FRONTEND, note how we send in the page number 
 fetch('/search/AdminDashboard/actions', {
-    method: 'GET',
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
         action: 1,
@@ -302,16 +302,16 @@ fetch('/search/AdminDashboard/actions', {
     })
 }).then(res => res.json()).then(result => console.log(result.data));
 */
-app.get('/search/AdminDashboard/actions', authenticateToken, async (request, response) => {
-    if (request.role !== ROLES.CONTRACTOR)
+app.post('/search/AdminDashboard/actions', authenticateToken, async (request, response) => {
+    const { action, page, params = {} } = request.body ?? {};
+
+    if (request.role !== ROLES.CONTRACTOR) 
     {
         console.log(`Unauthorized search action: '${action}'`);
-        return response.status(400).json({ success: false, message: `Unauthorized search action, session ID must be of the ${ROLES.CONTRACTOR} role: '${request.role} REQUESTING ACTION ${action}'` });
-    };
+        return response.status(403).json({ success: false, message: `Unauthorized search action, session ID must be of the ${ROLES.CONTRACTOR} role: '${request.role} REQUESTING ACTION ${action}'` });
+    }
 
-    const { action, page, params = {} } = request.body;
     const searchFunc = ADMIN_DASHBOARD_ACTIONS.get(action);
-
     if (!searchFunc) 
     {
         console.log(`Invalid or unauthorized search action: '${action}'`);
@@ -321,15 +321,15 @@ app.get('/search/AdminDashboard/actions', authenticateToken, async (request, res
     try 
     {
         const db = dbService.getInstance();
-        const data = await searchFunc(db, page, params); 
-        return response.json({ data: data });
+        const data = await searchFunc(db, page, params);
+        return response.json({ data });
     } 
     catch (err) 
     {
         console.error('Search action failed:', err);
-        return response.status(500).json({ 
-            success: false, 
-            message: 'Database query execution failed.' 
+        return response.status(500).json({
+            success: false,
+            message: 'Database query execution failed.'
         });
     }
 });
