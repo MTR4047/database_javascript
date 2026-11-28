@@ -8,7 +8,7 @@ export default class ProductService
     constructor(connection) { this.#connection = connection; }
     getInstance(connection) { this.#connection = connection; return this; }
 
-    // #region Flooring Products, Category, Pattern table
+    // #region Flooring Products table
     static FLOORING_PRODUCT_SRV_TN = FLOORING_PRODUCT_TN;
     static FLOORING_PRODUCT_SRV_TC = FLOORING_PRODUCT_TC;
     static ALLOWED_FLOORING_PRODUCT_COLUMNS_SET = new Set(Object.values(this.FLOORING_PRODUCT_SRV_TC));
@@ -84,6 +84,8 @@ export default class ProductService
         const normalized = val.trim().toLowerCase();
         return ProductService.pricingUnits.has(normalized) ? normalized: undefined;
     }
+
+    // #endregion
 
     // #endregion
 
