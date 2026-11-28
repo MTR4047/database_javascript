@@ -274,7 +274,7 @@ app.patch('/update/Clients', authenticateToken, (request, response) => {
     });
 });
 
-// #region OTHER READ OPERATIONS
+// #region ADMNISTRATOR DASHBOARD SEARCH OPERATIONS
 
 // Map of allowed search operations
 const ADMIN_DASHBOARD_ACTIONS = new Map([
@@ -293,17 +293,18 @@ const ADMIN_DASHBOARD_ACTIONS = new Map([
 Object.freeze(ADMIN_DASHBOARD_ACTIONS);
 
 /* EXAMPLE USE on the FRONTEND, note how we send in the page number 
-fetch('/search/AdminDashboard/actions', {
+fetch('/search/Dashboard/1/1', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-        action: 1,
-        page: 1
+        params: {}
     })
 }).then(res => res.json()).then(result => console.log(result.data));
 */
-app.post('/search/AdminDashboard/actions', authenticateToken, async (request, response) => {
-    const { action, page, params = {} } = request.body ?? {};
+app.post('/search/Dashboard/:queryNumber/:page', authenticateToken, async (request, response) => {
+    const { params = {} } = request.body ?? {};
+    const action = Number(request.params.queryNumber);
+    const page = Number(request.params.page);
 
     if (request.role !== ROLES.CONTRACTOR) 
     {
