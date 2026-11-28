@@ -244,7 +244,7 @@ export class DbService
     }
 
     /** 6.	Most Popular Flooring Materials: For each flooring material/product, determine how much flooring has actually been installed. This query should help Anna determine which flooring products are most popular with customers. 
-- Products that have never been installed should still be handled appropriately by your system. 
+     * Products that have never been installed should still be handled appropriately by your system. 
     */
     returnMostPopularMaterials(page)
     {

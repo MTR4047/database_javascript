@@ -245,7 +245,7 @@ app.patch('/update/Clients', authenticateToken, (request, response) => {
     { return response.status(400).json({ success: false, error: 'No update fields provided.' }); }
 
     const db = dbService.getInstance().getClientSRV();
-    const result = db.updateDetailsByUserID(updateData, serverSessionUserID)
+    const result = db.updateDetailsByUserID(updateData, serverSessionUserID);
 
     result.then((updatedRows) => {
         if (!updatedRows) 
@@ -277,92 +277,40 @@ app.patch('/update/Clients', authenticateToken, (request, response) => {
 // #region OTHER READ OPERATIONS
 
 // Map of allowed search operations
-
-/*
-const SEARCH_USER_ACTIONS = Object.freeze({
-    "searchByUsersName": async (db, params) => {
-        const { name } = params;
-        return await db.searchByUsersName(name);
-    },
-    "searchByUsersID": async (db, params) => {
-        const { username } = params;
-        return await db.searchByUsersID(username);
-    },
-    "searchBetweenUsersSalary": async (db, params) => {
-        const { minSalary, maxSalary } = params;
-        return await db.searchBetweenUsersSalary(minSalary, maxSalary);
-    },
-    "searchBetweenUsersAges": async (db, params) => {
-        const { minAge, maxAge } = params;
-        return await db.searchBetweenUsersAges(minAge, maxAge);
-    },    
-    "searchUsersRegistrationAfterUserID": async (db, params) => {
-        const { username } = params;
-        return await db.searchUsersRegistrationTimeAfterUserID(username);
-    },
-    "searchUsersRegistrationTimeSameAsUserID": async (db, params) => {
-        const { username } = params;
-        return await db.searchUsersRegistrationTimeSameAsUserID(username);
-    },
-    "searchNeverSignedInUsers": async (db, params) => {
-        const { } = params;
-        return await db.searchNeverSignedInUsers();
-    },
-    "searchUsersRegisteredToday": async (db, params) => {
-        const { } = params;
-        return await db.searchUsersRegisteredToday();
-    }
-});
-*/
-
-/* A MAP which defines allowable searchable functions for the singular search endpoint; 
-    This is much simpler than having to do the alternative:
-    const SEARCH_USER_ACTIONS = new Map([
-        [
-            srchOps.searchBetweenUsersSalary.key, 
-            (db, page, params) => db.searchBetweenUsersSalary(
-                page, 
-                params[srchOps.searchBetweenUsersSalary.params.minSalary], 
-                params[srchOps.searchBetweenUsersSalary.params.maxSalary]
-            )
-        ],
-        [
-            srchOps.searchByUsersID.key, 
-            (db, page, params) => db.searchByUsersID(
-                page, 
-                params[srchOps.searchByUsersID.params.username]
-            )
-        ]
-        // ...
-    ]);
-*/
-const SEARCH_USER_ACTIONS = new Map([
-    [constantsSQL.srchOps.searchByUsersName.key,                         async (db, page, params) => { return await db.searchByUsersName(page, params.name) } ],
-    [constantsSQL.srchOps.searchByUsersID.key,                           async (db, page, params) => { return await db.searchByUsersID(page, params.username) } ],
-    [constantsSQL.srchOps.searchBetweenUsersSalary.key,                  async (db, page, params) => { return await db.searchBetweenUsersSalary(page, params.minSalary, params.maxSalary) } ],
-    [constantsSQL.srchOps.searchBetweenUsersAges.key,                    async (db, page, params) => { return await db.searchBetweenUsersAges(page, params.minAge, params.maxAge) } ],
-    [constantsSQL.srchOps.searchUsersRegistrationAfterUserID.key,        async (db, page, params) => { return await db.searchUsersRegistrationTimeAfterUserID(page, params.username) } ],
-    [constantsSQL.srchOps.searchUsersRegistrationTimeSameAsUserID.key,   async (db, page, params) => { return await db.searchUsersRegistrationTimeSameAsUserID(page, params.username) } ],
-    [constantsSQL.srchOps.searchNeverSignedInUsers.key,                  async (db, page) => { return await db.searchNeverSignedInUsers(page) } ],
-    [constantsSQL.srchOps.searchUsersRegisteredToday.key,                async (db, page) => { return await db.searchUsersRegisteredToday(page) } ]
+const ADMIN_DASHBOARD_ACTIONS = new Map([
+    [1, async (db, page) =>         { return await db.returnBestCustomers(page) } ],
+    [2, async (db, page) =>         { return await db.returnWindowShoppers(page) } ],
+    [3, async (db, page, params) => { return await db.returnMonthlySales(page, params.year, params.month) } ],
+    [4, async (db, page) =>         { return await db.returnInactiveClients(page) } ],
+    [5, async (db, page) =>         { return await db.returnLargestFlooringProjects(page) } ],
+    [6, async (db, page) =>         { return await db.returnMostPopularMaterials(page) } ],
+    [7, async (db, page) =>         { return await db.returnMaterialCostAnalysis(page) } ],
+    [8, async (db, page) =>         { return await db.returnOverdueBills(page) } ],
+    [9, async (db, page) =>         { return await db.returnProblemCustomers(page) } ],
+    [10, async (db, page) =>        { return await db.returnExcellentCustomers(page) } ]
 ]);
 
-Object.freeze(SEARCH_USER_ACTIONS);
+Object.freeze(ADMIN_DASHBOARD_ACTIONS);
 
 /* EXAMPLE USE on the FRONTEND, note how we send in the page number 
-fetch('/search/Users/actions', {
-    method: 'POST',
+fetch('/search/AdminDashboard/actions', {
+    method: 'GET',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-        action: 'searchByAgeRange',
-        page: 1,
-        params: { minAge: 21, maxAge: 35 }
+        action: 1,
+        page: 1
     })
 }).then(res => res.json()).then(result => console.log(result.data));
 */
-app.post('/search/Users/actions', authenticateToken, async (request, response) => {   
+app.get('/search/AdminDashboard/actions', authenticateToken, async (request, response) => {
+    if (request.role !== ROLES.CONTRACTOR)
+    {
+        console.log(`Unauthorized search action: '${action}'`);
+        return response.status(400).json({ success: false, message: `Unauthorized search action, session ID must be of the ${ROLES.CONTRACTOR} role: '${request.role} REQUESTING ACTION ${action}'` });
+    };
+
     const { action, page, params = {} } = request.body;
-    const searchFunc = SEARCH_USER_ACTIONS.get(action);
+    const searchFunc = ADMIN_DASHBOARD_ACTIONS.get(action);
 
     if (!searchFunc) 
     {
